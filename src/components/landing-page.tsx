@@ -99,7 +99,7 @@ export default function LandingPage() {
                         alt="Sedan"
                         className="aspect-[1.5] object-cover"
                         height={150}
-                        src="/sedan.jpg"
+                        src="/placeholder.svg"
                         width={300}
                       />
                       <h3 className="text-xl font-bold">Sedan</h3>
@@ -111,7 +111,7 @@ export default function LandingPage() {
                         alt="SUV"
                         className="aspect-[1.5] object-cover"
                         height={150}
-                        src="/suv.jpg"
+                        src="/placeholder.svg"
                         width={300}
                       />
                       <h3 className="text-xl font-bold">SUV</h3>
@@ -123,7 +123,7 @@ export default function LandingPage() {
                         alt="Hatchback"
                         className="aspect-[1.5] object-cover"
                         height={150}
-                        src="/hatchback.jpg"
+                        src="/placeholder.svg"
                         width={300}
                       />
                       <h3 className="text-xl font-bold">Hatchback</h3>
@@ -139,7 +139,7 @@ export default function LandingPage() {
                         alt="Sport Bike"
                         className="aspect-[1.5] object-cover"
                         height={150}
-                        src="/sport-bike.jpg"
+                        src="/placeholder.svg"
                         width={300}
                       />
                       <h3 className="text-xl font-bold">Sport</h3>
@@ -151,7 +151,7 @@ export default function LandingPage() {
                         alt="Cruiser Bike"
                         className="aspect-[1.5] object-cover"
                         height={150}
-                        src="/cruiser-bike.jpg"
+                        src="/placeholder.svg"
                         width={300}
                       />
                       <h3 className="text-xl font-bold">Cruiser</h3>
@@ -163,7 +163,7 @@ export default function LandingPage() {
                         alt="Adventure Bike"
                         className="aspect-[1.5] object-cover"
                         height={150}
-                        src="/adventure-bike.jpg"
+                        src="/placeholder.svg"
                         width={300}
                       />
                       <h3 className="text-xl font-bold">Adventure</h3>
@@ -184,7 +184,7 @@ export default function LandingPage() {
                     alt="Car Model A"
                     className="aspect-[1.5] object-cover rounded-lg"
                     height={200}
-                    src="/car-model-a.jpg"
+                    src="/placeholder.svg"
                     width={300}
                   />
                   <h3 className="text-xl font-bold">Car Model A</h3>
@@ -198,7 +198,7 @@ export default function LandingPage() {
                     alt="Car Model B"
                     className="aspect-[1.5] object-cover rounded-lg"
                     height={200}
-                    src="/car-model-b.jpg"
+                    src="/placeholder.svg"
                     width={300}
                   />
                   <h3 className="text-xl font-bold">Car Model B</h3>
