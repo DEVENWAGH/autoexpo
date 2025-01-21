@@ -13,9 +13,7 @@ export default function Navbar() {
           className="object-contain"
         />
         <div className="flex gap-6 text-white">
-          <a href="#home" className="text-xl font-monument">Home</a>
-          <a href="#about" className="text-xl font-abril">About</a>
-          <a href="#services" className="text-xl font-abril">Services</a>
+          <a href="#home" className="text-xl font-monument font-[Monument_Extended]">Auto Explorer</a>
         </div>
       </div>
       

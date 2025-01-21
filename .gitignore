@@ -13,6 +13,7 @@
 # testing
 /coverage
 
+/car
 # next.js
 /.next/
 /out/

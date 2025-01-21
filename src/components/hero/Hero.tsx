@@ -13,7 +13,7 @@ export default function Hero() {
           Lorem ipsum dolor sit amet, consectetur adipiscing elit. Suspendisse varius enim in eros elementum tristique.
         </p>
       </div>
-      <div className="absolute right-0 top-0 w-[1009px] h-[621px] border-[13px] border-black rounded-[50px] overflow-hidden">
+      <div className="absolute right-0 top-0 w-[1009px] h-[621px]">
         <Image
           src="/Audi.svg"
           alt="Audi"
