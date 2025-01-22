@@ -2,9 +2,17 @@
 import Image from "next/image";
 import Lottie from "react-lottie";
 import location from "../../app/location.json";
+import localFont from "next/font/local";
+
+const MonumentExtended = localFont({
+  src: "../../app/fonts/MonumentExtended-Regular.ttf",
+  variable: "--font-monument-extended",
+  weight: "400",
+});
+
 export default function Navbar() {
   return (
-    <nav className="flex relative justify-between items-center px-16 h-[8rem] bg-[#0C041F] backdrop-blur-sm">
+    <nav className={`${MonumentExtended.className} flex relative justify-between items-center px-16 h-[8rem] bg-[#0C041F] backdrop-blur-sm`}>
       <div className="flex items-center">
         <Image
           src="/AutoExplorer.svg"
