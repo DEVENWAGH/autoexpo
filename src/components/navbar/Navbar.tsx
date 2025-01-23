@@ -12,7 +12,7 @@ const MonumentExtended = localFont({
 
 export default function Navbar() {
   return (
-    <nav className={`${MonumentExtended.className} flex relative justify-between items-center px-16 h-[8rem] bg-[#0C041F] backdrop-blur-sm`}>
+    <nav className={`${MonumentExtended.className} flex relative justify-between px-16 h-[8rem] bg-[#0C041F] backdrop-blur-sm`}>
       <div className="flex items-center">
         <Image
           src="/AutoExplorer.svg"

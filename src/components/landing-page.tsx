@@ -1,8 +1,7 @@
 import Navbar from "./navbar/Navbar";
 import Hero from "./hero/Hero";
-import Features from "./features/Features";
-import HowItWorks from "./how-it-works/HowItWorks";
 import Footer from "./footer/Footer";
+import GlassContainer from "./glassContainer/GlassContainer";
 
 export default function LandingPage() {
   return (
@@ -10,8 +9,7 @@ export default function LandingPage() {
       <Navbar />
       <main className="container mx-auto px-4 max-w-[1440px]">
         <Hero />
-        <Features />
-        <HowItWorks />
+        <GlassContainer />
       </main>
       <Footer />
     </div>
