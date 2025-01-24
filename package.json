@@ -14,7 +14,9 @@
     "@radix-ui/react-slot": "^1.1.0",
     "@radix-ui/react-tabs": "^1.1.1",
     "@radix-ui/themes": "^3.1.6",
+    "@react-email/components": "^0.0.32",
     "autoexpo": "file:",
+    "bcryptjs": "^2.4.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.453.0",
@@ -22,6 +24,7 @@
     "next": "15.1.5",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "react-email": "^3.0.6",
     "react-lottie": "^1.2.10",
     "resend": "^4.1.1",
     "tailwind-merge": "^2.6.0",
@@ -30,6 +33,7 @@
     "zustand": "^5.0.3"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
