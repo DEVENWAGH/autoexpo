@@ -8,7 +8,8 @@ interface Props {
 }
 
 export default function LogoCarousel({ logos }: Props) {
-  const [activeIndex, setActiveIndex] = useState(0);
+  // Start from middle by setting initial active index to middle of array
+  const [activeIndex, setActiveIndex] = useState(Math.floor(logos.length / 2));
   const containerRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [startX, setStartX] = useState(0);
@@ -48,10 +49,10 @@ export default function LogoCarousel({ logos }: Props) {
       Math.abs(index - activeIndex + logos.length)
     );
 
-    if (distance === 0) return 1; // Center (100% size)
-    if (distance === 1) return 0.85; // Adjacent (85% size)
-    if (distance === 2) return 0.7; // Second position (70% size)
-    return 0.55; // Rest (55% size)
+    if (distance === 0) return 1.2; // Center (120% size)
+    if (distance === 1) return 1; // Adjacent (100% size)
+    if (distance === 2) return 0.8; // Second position (80% size)
+    return 0.6; // Rest (60% size)
   };
 
   const getOpacity = (index: number) => {
@@ -83,10 +84,25 @@ export default function LogoCarousel({ logos }: Props) {
     return () => clearInterval(interval);
   }, [logos.length]);
 
+  const calculatePosition = (index: number) => {
+    const totalLogos = logos.length;
+    const middleIndex = Math.floor(totalLogos / 2);
+    let relativeIndex = index - activeIndex;
+    
+    // Wrap around for infinite effect
+    if (relativeIndex > middleIndex) {
+      relativeIndex -= totalLogos;
+    } else if (relativeIndex < -middleIndex) {
+      relativeIndex += totalLogos;
+    }
+
+    return `${50 + (relativeIndex * 8)}%`;
+  };
+
   return (
-    <div
+    <div 
       ref={containerRef}
-      className="relative h-40 overflow-hidden my-10 touch-none select-none cursor-grab active:cursor-grabbing"
+      className="relative h-56 overflow-hidden my-10 touch-none select-none cursor-grab active:cursor-grabbing"
       onMouseDown={handleDragStart}
       onMouseMove={handleDragMove}
       onMouseUp={handleDragEnd}
@@ -96,26 +112,25 @@ export default function LogoCarousel({ logos }: Props) {
       onTouchEnd={handleDragEnd}
     >
       <div className="flex items-center justify-center relative h-full">
-        {logos.map((logo, index) => (
+        {[...logos, ...logos].map((logo, index) => (
           <div
-            key={`logo-${logo.replace(/[^a-zA-Z0-9]/g, "-")}`}
-            className="absolute transition-all duration-500 ease-out" // Increased duration
+            key={index}
+            className="absolute transition-all duration-500 ease-out"
             style={{
-              transform: `translateX(-50%) scale(${getScale(index)})`,
-              left: `${50 + (index - activeIndex) * 20}%`, // Adjusted spacing
-              opacity: getOpacity(index),
-              zIndex: 1000 - Math.abs(index - activeIndex),
+              transform: `translateX(-50%) scale(${getScale(index % logos.length)})`,
+              left: `${50 + (index - activeIndex) * 12.5}%`, // Fixed equal spacing of 12.5%
+              opacity: getOpacity(index % logos.length),
+              zIndex: 1000 - Math.abs(index % logos.length - activeIndex)
             }}
           >
-            <div className="w-24 h-24 flex items-center justify-center bg-white rounded-lg">
+            <div className="w-48 h-48 flex items-center justify-center bg-white rounded-lg shadow-lg mx-4">
               <Image
                 src={logo}
                 alt={`Brand logo ${index + 1}`}
-                width={60}
-                height={60}
-                className="object-contain p-2"
+                width={120}
+                height={120}
+                className="object-contain p-3"
                 draggable={false}
-                onError={(e) => handleImageError(e, logo)}
               />
             </div>
           </div>
