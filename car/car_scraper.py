@@ -9,6 +9,7 @@ import urllib.request
 import hashlib
 from PIL import Image
 import io
+from vehicle_model import create_vehicle, Vehicle, ImageInfo
 
 class CarScraper:
     def __init__(self):
@@ -44,6 +45,19 @@ class CarScraper:
             'variants': []
         }
         self.downloaded_hashes = set()  # Track downloaded image hashes
+        self.downloaded_urls = set()    # Track cleaned URLs
+        self.downloaded_files = set()   # Track filenames
+        self.processed_images = {}  # Track processed images by their file paths
+
+        # Create category directories
+        self.category_dirs = {}
+        for category in self.image_categories.keys():
+            category_path = os.path.join(self.image_dir, category)
+            os.makedirs(category_path, exist_ok=True)
+            self.category_dirs[category] = category_path
+
+        self.image_quality = "?imwidth=3840&impolicy=resize"  # Increased quality
+        self.model_variants = {}  # Track model variants
 
     def setup_logging(self):
         logging.basicConfig(
@@ -77,36 +91,38 @@ class CarScraper:
                     specs['transmission'] = part
         return specs
 
+    def _extract_brand_info(self, brand_element):
+        """Helper method to extract brand information from an element"""
+        if not (brand_element.get('href') and '/cars/' in brand_element.get('href')):
+            return None
+            
+        brand_name = (brand_element.find('span', class_='name').text.strip() 
+                     if brand_element.find('span', class_='name') 
+                     else brand_element.text.strip())
+        brand_url = brand_element['href']
+        if not brand_url.startswith('http'):
+            brand_url = self.base_url + brand_url
+            
+        return {'name': brand_name, 'url': brand_url}
+
     def get_all_brands(self):
         try:
-            # Use home page URL instead of manufacturers page
-            url = self.base_url
-            soup = self.fetch_page(url)
+            soup = self.fetch_page(self.base_url)
             if not soup:
-                raise Exception("Failed to fetch home page")
+                raise requests.exceptions.RequestException("Failed to fetch home page")
+                
+            brand_section = soup.find('div', {'data-track-section': 'Popular Brands'})
+            if not brand_section:
+                logging.error("No brand section found")
+                return []
                 
             brands = []
-            # Find the popular brands section
-            brand_section = soup.find('div', {'data-track-section': 'Popular Brands'})
+            for brand in brand_section.find_all('a'):
+                brand_info = self._extract_brand_info(brand)
+                if brand_info:
+                    brands.append(brand_info)
+                    logging.info(f"Found brand: {brand_info['name']} at URL: {brand_info['url']}")
             
-            if (brand_section):
-                brand_elements = brand_section.find_all('a')
-                for brand in brand_elements:
-                    if brand.get('href') and '/cars/' in brand.get('href'):
-                        brand_name = brand.find('span', class_='name').text.strip() if brand.find('span', class_='name') else brand.text.strip()
-                        brand_url = brand['href']
-                        if not brand_url.startswith('http'):
-                            brand_url = self.base_url + brand_url
-                        
-                        brands.append({
-                            'name': brand_name,
-                            'url': brand_url
-                        })
-                        logging.info(f"Found brand: {brand_name} at URL: {brand_url}")
-            
-            if not brands:
-                logging.error("No brands found in the popular brands section")
-                
             logging.info(f"Found {len(brands)} brands")
             return brands
             
@@ -196,73 +212,85 @@ class CarScraper:
                     })
         return images
 
+    def _get_color_name(self, color_element):
+        """Extract color name from element"""
+        name_element = color_element.find(['span', 'div'], class_=['name', 'title', 'gs_control'])
+        if name_element:
+            return name_element.get('title') or name_element.text.strip()
+        return None
+
+    def _process_image_url(self, img_url):
+        """Process and format image URL"""
+        if not img_url or img_url.endswith(('spacer.png', 'placeholder.jpg')):
+            return None
+            
+        if img_url.startswith('//'):
+            img_url = f"https:{img_url}"
+            
+        img_url = img_url.split('?')[0]
+        return f"{img_url}?imwidth=1920&impolicy=resize"
+
+    def _extract_image_from_element(self, img_element, title=None, alt=None):
+        """Extract image information from element"""
+        img_url = (img_element.get('data-lazy-src') or 
+                  img_element.get('data-src') or 
+                  img_element.get('src'))
+                  
+        img_url = self._process_image_url(img_url)
+        if img_url:
+            return {
+                'url': img_url,
+                'title': title or "Color Variant",
+                'alt': alt or "Car Color",
+                'category': 'colors'
+            }
+        return None
+
+    def _process_color_element(self, color_element):
+        """Process a single color element"""
+        color_name = self._get_color_name(color_element)
+        img = color_element.find('img')
+        if img:
+            return self._extract_image_from_element(
+                img,
+                title=f"Color - {color_name}" if color_name else "Color Variant",
+                alt=color_name or "Car Color"
+            )
+        return None
+
     def extract_color_images(self, soup):
         """Extract color variant images with improved detection"""
         images = []
         try:
-            # Get all color sections
-            color_sections = soup.find_all(['div', 'section'], class_=lambda x: x and any(c in x for c in ['ColorSection', 'colors-section', 'gsc_row']))
+            # Process main color sections
+            color_sections = soup.find_all(['div', 'section'], 
+                class_=lambda x: x and any(c in x for c in ['ColorSection', 'colors-section', 'gsc_row']))
             
             for section in color_sections:
-                # Find all color elements
                 color_elements = section.find_all(['li', 'div'], attrs={'data-color': True})
-                
-                for color_element in color_elements:
-                    color_name = None
-                    # Try different ways to get color name
-                    name_element = color_element.find(['span', 'div'], class_=['name', 'title', 'gs_control'])
-                    if name_element:
-                        color_name = name_element.get('title') or name_element.text.strip()
-                    
-                    # Find corresponding image
-                    img = color_element.find('img')
-                    if img:
-                        img_url = (img.get('data-lazy-src') or 
-                                 img.get('data-src') or 
-                                 img.get('src'))
-                        
-                        if img_url and not img_url.endswith(('spacer.png', 'placeholder.jpg')):
-                            if img_url.startswith('//'):
-                                img_url = f"https:{img_url}"
-                                
-                            # Get highest quality version
-                            img_url = img_url.split('?')[0]
-                            img_url = f"{img_url}?imwidth=1920&impolicy=resize"
-                            
-                            images.append({
-                                'url': img_url,
-                                'title': f"Color - {color_name}" if color_name else "Color Variant",
-                                'alt': color_name or "Car Color",
-                                'category': 'colors'
-                            })
-            
-            # Also look for 360-degree color views
-            color_360_section = soup.find(['div', 'section'], class_=lambda x: x and '360' in str(x).lower())
+                for element in color_elements:
+                    img_data = self._process_color_element(element)
+                    if img_data:
+                        images.append(img_data)
+
+            # Process 360-degree views
+            color_360_section = soup.find(['div', 'section'], 
+                class_=lambda x: x and '360' in str(x).lower())
             if color_360_section:
                 for img in color_360_section.find_all('img'):
-                    img_url = (img.get('data-lazy-src') or 
-                             img.get('data-src') or 
-                             img.get('src'))
-                    if img_url:
-                        images.append({
-                            'url': img_url,
-                            'title': "360 Color View",
-                            'alt': "360 Degree Color View",
-                            'category': 'colors'
-                        })
+                    img_data = self._extract_image_from_element(
+                        img,
+                        title="360 Color View",
+                        alt="360 Degree Color View"
+                    )
+                    if img_data:
+                        images.append(img_data)
 
         except Exception as e:
             logging.error(f"Error extracting color images: {str(e)}")
             
         # Remove duplicates while preserving order
-        seen_urls = set()
-        unique_images = []
-        for img in images:
-            if img['url'] not in seen_urls:
-                seen_urls.add(img['url'])
-                unique_images.append(img)
-                
-        return unique_images
+        return list({img['url']: img for img in images}.values())
 
     def get_image_hash(self, img_url):
         """Generate hash of image content to detect duplicates"""
@@ -274,7 +302,109 @@ class CarScraper:
             logging.error(f"Error generating image hash: {str(e)}")
         return None
 
+    def clean_image_url(self, img_url):
+        """Clean image URL to help identify duplicates"""
+        if not img_url:
+            return None
+        # Remove query parameters and normalize protocol
+        img_url = img_url.split('?')[0].replace('http:', 'https:')
+        if img_url.startswith('//'):
+            img_url = f"https:{img_url}"
+        elif not img_url.startswith('http'):
+            img_url = f"https://{img_url.lstrip('/')}"
+        return img_url
+
+    def is_duplicate_image(self, img_url, img_hash=None):
+        """Check if image is duplicate using URL and hash"""
+        clean_url = self.clean_image_url(img_url)
+        if clean_url in self.downloaded_urls:
+            return True
+        
+        if not img_hash:
+            img_hash = self.get_image_hash(img_url)
+        
+        if img_hash and img_hash in self.downloaded_hashes:
+            return True
+            
+        return False
+
+    def _extract_car_url(self, container):
+        """Extract car URL from container"""
+        url_element = container.find('a', href=True)
+        if not url_element:
+            return None
+        url = url_element['href']
+        if not url.startswith('http'):
+            url = self.base_url + url
+        return url
+
+    def _extract_car_name_price(self, container):
+        """Extract car name and price from container"""
+        name_element = container.find('h3')
+        if not name_element:
+            return None, None
+        name = name_element.text.strip()
+        
+        price_div = container.find('div', class_='price')
+        price = price_div.text.strip() if price_div else 'N/A'
+        price = price.split('*')[0] if '*' in price else price
+        price = price.replace('Rs.', '').strip()
+        
+        return name, price
+
+    def _process_car_container(self, container, brand_name):
+        """Process individual car container"""
+        url = self._extract_car_url(container)
+        if not url:
+            logging.error("Could not find URL for car")
+            return None
+
+        name, price = self._extract_car_name_price(container)
+        if not name:
+            return None
+
+        logging.info(f"Processing car {name} at URL: {url}")
+        specs = self.get_car_specs(url)
+        additional_images = self.get_car_images(url)
+        variant_info = self.get_car_variants(url)
+
+        car_data = {
+            'brand': brand_name,
+            'name': name,
+            'price': price,
+            'url': url,
+            'specs': specs,
+            'price_range': variant_info['price'],
+            'variants': variant_info['variants']
+        }
+
+        # Process images
+        car_images = []
+        image_stats = {cat: 0 for cat in self.image_categories}
+        
+        for img_data in additional_images:
+            if img_data['url'] and not self.is_duplicate_image(img_data['url']):
+                category = self.get_image_category(img_data)
+                result = self.download_image(img_data, brand_name, name)
+                if result:
+                    image_stats[category] += 1
+                    car_images.append(ImageInfo(
+                        url=img_data['url'],
+                        title=img_data.get('title', ''),
+                        alt=img_data.get('alt', ''),
+                        category=category,
+                        local_path=result
+                    ))
+
+        car_data.update({
+            'images': car_images,
+            'image_counts': image_stats
+        })
+        
+        return create_vehicle(car_data)
+
     def get_cars_by_brand(self, brand_name, brand_url):
+        """Get all cars for a specific brand"""
         try:
             soup = self.fetch_page(brand_url)
             if not soup:
@@ -313,71 +443,37 @@ class CarScraper:
                     # Fetch car specifications
                     specs = self.get_car_specs(url)
 
-                    # Initialize image lists
-                    images = []
-                    valid_images = []
-                    
-                    # Get main gallery/listing images first
-                    gallery = container.find('div', class_='imageWrapper')
-                    if gallery:
-                        img_elements = gallery.find_all('img')
-                        for img in img_elements:
-                            img_url = (img.get('data-lazy-src') or 
-                                     img.get('data-src') or 
-                                     img.get('src'))
-                            if img_url:
-                                images.append(img_url)
-
                     # Get additional images from pictures page
                     additional_images = self.get_car_images(url)
-                    if additional_images:
-                        for img_data in additional_images:
-                            if img_data['url']:
-                                images.append(img_data['url'])
-
-                    # Clean and validate image URLs
-                    for img_url in images:
-                        if img_url and not any(x in img_url.lower() for x in ['spacer', 'placeholder', 'blank']):
-                            if img_url.startswith('//'):
-                                img_url = f"https:{img_url}"
-                            elif not img_url.startswith('http'):
-                                img_url = f"{self.base_url}/{img_url.lstrip('/')}"
-                            if img_url not in valid_images:  # Remove duplicates
-                                valid_images.append(img_url)
-
-                    # Download images
-                    local_image_paths = []
-                    for idx, img_url in enumerate(valid_images, 1):
-                        try:
-                            local_path = self.download_image(img_url, brand_name, f"{name}_{idx}")
-                            if local_path:
-                                local_image_paths.append(local_path)
-                                logging.info(f"Successfully downloaded image {idx}/{len(valid_images)} for {name}")
-                        except Exception as img_err:
-                            logging.error(f"Failed to download image {idx} for {name}: {str(img_err)}")
-                            continue
-
-                    # Modify image handling section
+                    
+                    # Process images for base model
                     image_stats = {cat: 0 for cat in self.image_categories}
+                    car_images = []
                     
                     for img_data in additional_images:
-                        if img_data['url']:
+                        if img_data['url'] and not self.is_duplicate_image(img_data['url']):
                             category = self.get_image_category(img_data)
-                            result = self.download_image(
-                                img_data,
-                                brand_name,
-                                name
-                            )
+                            result = self.download_image(img_data, brand_name, name)
                             if result:
                                 image_stats[category] += 1
+                                car_images.append(ImageInfo(
+                                    url=img_data['url'],
+                                    title=img_data.get('title', ''),
+                                    alt=img_data.get('alt', ''),
+                                    category=category,
+                                    local_path=result
+                                ))
 
-                    # Add variant information to car data
+                    # Process variant information and images
                     variant_info = self.get_car_variants(url)
-                    car_data.update({
-                        'price_range': variant_info['price'],
-                        'variants': variant_info['variants']
-                    })
+                    for variant in variant_info['variants']:
+                        variant_images = self.get_car_images(variant['url'])
+                        for img_data in variant_images:
+                            if img_data['url']:
+                                img_data['title'] = f"{variant['name']}_{img_data.get('title', 'image')}"
+                                self.download_image(img_data, brand_name, name)
 
+                    # Create car data dictionary
                     car_data = {
                         'brand': brand_name,
                         'name': name,
@@ -390,11 +486,17 @@ class CarScraper:
                         'safety_rating': specs.get('Global NCAP Safety Rating', 'N/A'),
                         'url': url,
                         'image_counts': image_stats,
-                        'specs': specs
+                        'specs': specs,
+                        'price_range': variant_info['price'],
+                        'variants': variant_info['variants'],
+                        'images': car_images
                     }
-                    cars.append(car_data)
+
+                    # Create vehicle object
+                    vehicle = create_vehicle(car_data)
+                    cars.append(vehicle)
                     
-                    logging.info(f"Successfully processed {name} with {len(valid_images)} images found and {len(local_image_paths)} downloaded")
+                    logging.info(f"Successfully processed {name}")
                     
                 except Exception as e:
                     logging.error(f"Error processing car: {str(e)}")
@@ -415,48 +517,98 @@ class CarScraper:
                 return category
         return 'exterior'  # Default category
 
+    def organize_model_folders(self, brand_name, model_name):
+        """Create organized folder structure for model"""
+        model_path = os.path.join(self.image_dir, brand_name, model_name)
+        
+        # Create base folders for model
+        folders = {
+            'base': model_path,
+            'colors': os.path.join(model_path, 'colors'),
+            '360': os.path.join(model_path, '360'),
+            'interior': os.path.join(model_path, 'interior'),
+            'exterior': os.path.join(model_path, 'exterior'),
+            'variants': os.path.join(model_path, 'variants')
+        }
+        
+        for folder in folders.values():
+            os.makedirs(folder, exist_ok=True)
+            
+        return folders
+
     def download_image(self, img_data, brand_name, model_name):
-        """Download image with duplicate detection"""
+        """Download image with improved organization and quality"""
         try:
-            img_url = img_data.get('url')
+            img_url = img_data.get('url') if isinstance(img_data, dict) else img_data
             if not img_url:
                 return None
 
-            # Generate image hash before downloading
-            img_hash = self.get_image_hash(img_url)
-            if not img_hash or img_hash in self.downloaded_hashes:
-                logging.info(f"Skipping duplicate image: {img_url}")
+            # Clean URL and improve quality
+            clean_url = self.clean_image_url(img_url)
+            if not clean_url:
                 return None
             
-            # Clean names for directory structure  
-            clean_model = "".join(c for c in model_name if c.isalnum() or c in (' ', '-', '_')).rstrip()
-            clean_title = "".join(c for c in img_data.get('title', 'image') if c.isalnum() or c in (' ', '-', '_')).rstrip()
+            # Add high quality parameters
+            clean_url = clean_url.split('?')[0] + self.image_quality
+
+            # Check URL duplicates
+            if clean_url in self.downloaded_urls:
+                return None
+
+            # Generate image hash
+            img_hash = self.get_image_hash(clean_url)
+            if not img_hash or img_hash in self.downloaded_hashes:
+                return None
             
-            # Determine category and create directory structure
-            category = self.get_image_category(img_data)
-            category_dir = os.path.join(self.image_dir, brand_name, clean_model, category)
-            os.makedirs(category_dir, exist_ok=True)
+            # Create folder structure
+            folders = self.organize_model_folders(brand_name, model_name)
+            
+            # Determine category and folder
+            category = self.get_image_category(img_data) if isinstance(img_data, dict) else 'exterior'
+            save_dir = folders.get(category, folders['base'])
 
-            # Generate unique filename
-            filename = os.path.join(category_dir, f"{clean_title}.jpg")
-            counter = 1
-            while os.path.exists(filename):
-                filename = os.path.join(category_dir, f"{clean_title}_{counter}.jpg")
-                counter += 1
+            # Clean title and generate unique filename
+            clean_title = "".join(c for c in img_data.get('title', 'image') if c.isalnum() or c in (' ', '-', '_')).rstrip() if isinstance(img_data, dict) else 'image'
+            
+            # Use content hash in filename to avoid duplicates
+            filename = os.path.join(save_dir, f"{clean_title}_{img_hash[:8]}.jpg")
+            
+            # Skip if we already processed this image
+            if filename in self.processed_images:
+                return None
 
-            # Download and save image
-            response = requests.get(img_url, headers=self.headers, stream=True, timeout=10)
+            # Download and verify image quality
+            response = requests.get(clean_url, headers=self.headers, stream=True, timeout=10)
             response.raise_for_status()
             
+            # Save image content
             with open(filename, 'wb') as f:
                 for chunk in response.iter_content(chunk_size=8192):
                     if chunk:
                         f.write(chunk)
             
-            # Add hash to tracked hashes
+            # Verify image quality
+            try:
+                with Image.open(filename) as img:
+                    width, height = img.size
+                    if width < 800 or height < 600:  # Skip low quality images
+                        os.remove(filename)
+                        return None
+            except Exception:
+                if os.path.exists(filename):
+                    os.remove(filename)
+                return None
+
+            # Track successful download
             self.downloaded_hashes.add(img_hash)
-            logging.info(f"Successfully downloaded new image: {filename}")
+            self.downloaded_urls.add(clean_url)
+            self.processed_images[filename] = {
+                'category': category,
+                'hash': img_hash,
+                'url': clean_url
+            }
             
+            logging.info(f"Successfully downloaded: {filename}")
             return category
             
         except Exception as e:
@@ -542,8 +694,12 @@ class CarScraper:
             
         return pd.DataFrame(all_cars_data)
 
-    def save_data(self, df, filename='cars_data.csv'):
+    def save_data(self, vehicles, filename='cars_data.csv'):
         try:
+            # Convert vehicle objects to dictionaries
+            car_data = [vehicle.to_dict() for vehicle in vehicles]
+            df = pd.DataFrame(car_data)
+            
             # Save main car data
             columns_to_save = [
                 'brand', 'name', 'price_range', 'fuel_type', 'mileage',

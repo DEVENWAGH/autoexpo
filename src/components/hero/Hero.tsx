@@ -89,6 +89,17 @@ export default function Hero() {
   const brands = activeTab === "cars" ? carBrands : bikeBrands;
   const models = activeTab === "cars" ? carModels[selectedBrand] || [] : bikeModels[selectedBrand] || [];
 
+  // Reset selections when tab changes
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+    setActiveCategory(value as 'cars' | 'bikes');
+    // Reset all selections
+    setSelectedBrand('');
+    setSelectedModel('');
+    setSelectedBudget('');
+    setSelectedVehicleType('');
+  };
+
   return (
     <section className="w-full max-w-[1440px] h-[860px] mx-auto mt-8 bg-[#D0BCFF] rounded-[50px] border border-black relative">
       <div className="absolute right-0 top-0 w-[1009px] h-[621px]">
@@ -102,10 +113,7 @@ export default function Hero() {
       </div>
       <div className="flex my-12 ml-5 justify-start bg-[#0C041F] w-[22rem] rounded-2xl items-center h-[30rem]">
         <div className="w-auto h-auto absolute px-4 md:px-6">
-          <Tabs defaultValue="cars" className="h-auto mx-auto" onValueChange={(value) => {
-            setActiveTab(value);
-            setActiveCategory(value as 'cars' | 'bikes');
-          }}>
+          <Tabs defaultValue="cars" className="h-auto mx-auto" onValueChange={handleTabChange}>
             <TabsList className="grid h-auto grid-cols-2 [&>*[data-state=active]]:bg-[#7129a1]">
               <TabsTrigger value="cars" className={`h-16 text-lg ${Monument_Extended.className}`}>
                 Cars
