@@ -101,7 +101,7 @@ export default function Hero() {
         />
       </div>
       <div className="flex my-12 ml-5 justify-start bg-[#0C041F] w-[22rem] rounded-2xl items-center h-[30rem]">
-        <div className="w-46 h-auto absolute px-4 md:px-6">
+        <div className="w-auto h-auto absolute px-4 md:px-6">
           <Tabs defaultValue="cars" className="h-auto mx-auto" onValueChange={(value) => {
             setActiveTab(value);
             setActiveCategory(value as 'cars' | 'bikes');
@@ -120,7 +120,7 @@ export default function Hero() {
             <button
               onClick={() => setSelectedFilter("brands")}
               className={cn(
-              "rounded-b-full rounded-r-none px-8 py-2 text-lg text-white transition-colors",
+              "rounded-l-full rounded-r-none px-8 py-2 text-lg text-white transition-colors",
               selectedFilter === "brands" ? "bg-[#7C3AED]" : "bg-[#1F1B2A]"
               )}
             >
@@ -129,7 +129,7 @@ export default function Hero() {
             <button
               onClick={() => setSelectedFilter("budget")}
               className={cn(
-              "rounded-b-full rounded-l-none px-8 py-2 text-lg text-white transition-colors",
+              "rounded-r-full rounded-l-none px-8 py-2 text-lg text-white transition-colors",
               selectedFilter === "budget" ? "bg-[#7C3AED]" : "bg-[#1F1B2A]"
               )}
             >
@@ -150,9 +150,9 @@ export default function Hero() {
                   <SelectTrigger className="w-full text-xl">
                     <SelectValue placeholder="Set Budget" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-black text-white">
                     {(activeTab === "cars" ? carBudgetRanges : bikeBudgetRanges).map((budget) => (
-                      <SelectItem key={budget} value={budget}>
+                      <SelectItem key={budget} value={budget} className="hover:bg-[#7129a1] focus:bg-[#7129a1]">
                         {budget}
                       </SelectItem>
                     ))}
@@ -166,9 +166,9 @@ export default function Hero() {
                   <SelectTrigger className="w-full text-xl">
                     <SelectValue placeholder={`Select ${activeTab === "cars" ? "Car" : "Bike"} Type`} />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-black text-white">
                     {(activeTab === "cars" ? carTypes : bikeTypes).map((type) => (
-                      <SelectItem key={type} value={type}>
+                      <SelectItem key={type} value={type} className="hover:bg-[#7129a1] focus:bg-[#7129a1]">
                         {type}
                       </SelectItem>
                     ))}
@@ -184,9 +184,9 @@ export default function Hero() {
                   <SelectTrigger className="w-full text-xl">
                     <SelectValue placeholder="Select Brand" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-black text-white">
                     {brands.map((brand) => (
-                      <SelectItem key={brand} value={brand}>
+                      <SelectItem key={brand} value={brand} className="hover:bg-[#7129a1] focus:bg-[#7129a1]">
                         {brand}
                       </SelectItem>
                     ))}
@@ -200,9 +200,9 @@ export default function Hero() {
                   <SelectTrigger className="w-full text-xl">
                     <SelectValue placeholder="Select Model" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-black text-white">
                     {models.map((model) => (
-                      <SelectItem key={model} value={model}>
+                      <SelectItem key={model} value={model} className="hover:bg-[#7129a1] focus:bg-[#7129a1]">
                         {model}
                       </SelectItem>
                     ))}
