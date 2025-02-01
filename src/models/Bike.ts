@@ -3,6 +3,7 @@ import mongoose, { Schema, Document } from "mongoose";
 export interface IBike extends Document {
     _id: mongoose.Types.ObjectId;
     bikeModel: string;
+    category: 'Sport' | 'Sport Naked' | 'Cruiser' | 'Touring' | 'Adventure' | 'Commuter' | 'Electric' | 'Super Bike';
     price: number;
     description: string;
     mainImage: string;
