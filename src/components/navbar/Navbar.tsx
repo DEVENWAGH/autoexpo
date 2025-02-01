@@ -1,6 +1,6 @@
 "use client";
 import Image from "next/image";
-import Lottie from "react-lottie";
+import dynamic from "next/dynamic";
 import location from "../../app/location.json";
 import localFont from "next/font/local";
 
@@ -9,6 +9,9 @@ const MonumentExtended = localFont({
   variable: "--font-monument-extended",
   weight: "400",
 });
+
+// Dynamically import Lottie to ensure it only runs on the client side
+const Lottie = dynamic(() => import("react-lottie"), { ssr: false });
 
 export default function Navbar() {
   return (
