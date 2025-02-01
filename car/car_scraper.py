@@ -6,6 +6,9 @@ import time
 from datetime import datetime
 import logging
 import urllib.request
+import hashlib
+from PIL import Image
+import io
 
 class CarScraper:
     def __init__(self):
@@ -40,6 +43,7 @@ class CarScraper:
             'price': None,
             'variants': []
         }
+        self.downloaded_hashes = set()  # Track downloaded image hashes
 
     def setup_logging(self):
         logging.basicConfig(
@@ -193,96 +197,82 @@ class CarScraper:
         return images
 
     def extract_color_images(self, soup):
-        """Extract color variant images"""
+        """Extract color variant images with improved detection"""
         images = []
         try:
-            # Get main color gallery images
-            color_section = soup.find('div', {'data-type': 'css-carousel'})
-            if color_section:
-                # Get main color images
-                for img in color_section.select('ul[data-carousel="ColorGallery"] img'):
-                    img_url = (img.get('data-lazy-src') or 
-                             img.get('data-src') or 
-                             img.get('src'))
-                    if img_url and not img_url.endswith('spacer3x2.png'):
-                        if img_url.startswith('//'):
-                            img_url = f"https:{img_url}"
-                        # Get original high quality image
-                        img_url = img_url.split('?')[0]
-                        img_url = f"{img_url}?imwidth=1920&impolicy=resize"
-                        
-                        images.append({
-                            'url': img_url,
-                            'title': f"Color - {img.get('alt', '')}",
-                            'alt': img.get('alt', ''),
-                            'category': 'colors'
-                        })
-
-                # Get color thumb images
-                for color_dot in color_section.select('li[data-color]'):
-                    color_name = color_dot.find('div', class_='gs_control').get('title', '')
-                    color_style = color_dot.find('i', class_='coloredIcon')
+            # Get all color sections
+            color_sections = soup.find_all(['div', 'section'], class_=lambda x: x and any(c in x for c in ['ColorSection', 'colors-section', 'gsc_row']))
+            
+            for section in color_sections:
+                # Find all color elements
+                color_elements = section.find_all(['li', 'div'], attrs={'data-color': True})
+                
+                for color_element in color_elements:
+                    color_name = None
+                    # Try different ways to get color name
+                    name_element = color_element.find(['span', 'div'], class_=['name', 'title', 'gs_control'])
+                    if name_element:
+                        color_name = name_element.get('title') or name_element.text.strip()
                     
-                    if color_style:
-                        bg_color = color_style.get('style', '')
-                        if 'linear-gradient' in bg_color:
-                            # This is a dual tone color
-                            color_name = f"Dual Tone - {color_name}"
-                        
-                        # Find corresponding full image in the gallery
-                        img = color_dot.find('img')
-                        if img:
-                            img_url = (img.get('data-lazy-src') or 
-                                     img.get('data-src') or 
-                                     img.get('src'))
-                            if img_url and not img_url.endswith('spacer3x2.png'):
-                                if img_url.startswith('//'):
-                                    img_url = f"https:{img_url}"
-                                img_url = img_url.split('?')[0]
-                                img_url = f"{img_url}?imwidth=1920&impolicy=resize"
-                                
-                                images.append({
-                                    'url': img_url,
-                                    'title': f"Color - {color_name}",
-                                    'alt': color_name,
-                                    'category': 'colors'
-                                })
-
-            # Also check the color picker section
-            color_picker = soup.find('div', class_='gscr_lSGallery')
-            if color_picker:
-                for color_item in color_picker.find_all('li', {'data-color': True}):
-                    color_name = color_item.find('div', class_='gs_control').get('title', '')
-                    img = color_item.find('img')
+                    # Find corresponding image
+                    img = color_element.find('img')
                     if img:
                         img_url = (img.get('data-lazy-src') or 
                                  img.get('data-src') or 
                                  img.get('src'))
-                        if img_url and not img_url.endswith('spacer3x2.png'):
+                        
+                        if img_url and not img_url.endswith(('spacer.png', 'placeholder.jpg')):
                             if img_url.startswith('//'):
                                 img_url = f"https:{img_url}"
+                                
+                            # Get highest quality version
                             img_url = img_url.split('?')[0]
                             img_url = f"{img_url}?imwidth=1920&impolicy=resize"
                             
                             images.append({
                                 'url': img_url,
-                                'title': f"Color - {color_name}",
-                                'alt': color_name,
+                                'title': f"Color - {color_name}" if color_name else "Color Variant",
+                                'alt': color_name or "Car Color",
                                 'category': 'colors'
                             })
+            
+            # Also look for 360-degree color views
+            color_360_section = soup.find(['div', 'section'], class_=lambda x: x and '360' in str(x).lower())
+            if color_360_section:
+                for img in color_360_section.find_all('img'):
+                    img_url = (img.get('data-lazy-src') or 
+                             img.get('data-src') or 
+                             img.get('src'))
+                    if img_url:
+                        images.append({
+                            'url': img_url,
+                            'title': "360 Color View",
+                            'alt': "360 Degree Color View",
+                            'category': 'colors'
+                        })
 
         except Exception as e:
             logging.error(f"Error extracting color images: {str(e)}")
             
         # Remove duplicates while preserving order
-        seen = set()
+        seen_urls = set()
         unique_images = []
         for img in images:
-            if img['url'] not in seen:
-                seen.add(img['url'])
+            if img['url'] not in seen_urls:
+                seen_urls.add(img['url'])
                 unique_images.append(img)
                 
         return unique_images
+
+    def get_image_hash(self, img_url):
+        """Generate hash of image content to detect duplicates"""
+        try:
+            response = requests.get(img_url, headers=self.headers)
+            if response.status_code == 200:
+                return hashlib.md5(response.content).hexdigest()
+        except Exception as e:
+            logging.error(f"Error generating image hash: {str(e)}")
+        return None
 
     def get_cars_by_brand(self, brand_name, brand_url):
         try:
@@ -426,12 +416,18 @@ class CarScraper:
         return 'exterior'  # Default category
 
     def download_image(self, img_data, brand_name, model_name):
-        """Download image and save to appropriate category folder"""
+        """Download image with duplicate detection"""
         try:
             img_url = img_data.get('url')
             if not img_url:
                 return None
 
+            # Generate image hash before downloading
+            img_hash = self.get_image_hash(img_url)
+            if not img_hash or img_hash in self.downloaded_hashes:
+                logging.info(f"Skipping duplicate image: {img_url}")
+                return None
+            
             # Clean names for directory structure  
             clean_model = "".join(c for c in model_name if c.isalnum() or c in (' ', '-', '_')).rstrip()
             clean_title = "".join(c for c in img_data.get('title', 'image') if c.isalnum() or c in (' ', '-', '_')).rstrip()
@@ -448,7 +444,7 @@ class CarScraper:
                 filename = os.path.join(category_dir, f"{clean_title}_{counter}.jpg")
                 counter += 1
 
-            # Download image
+            # Download and save image
             response = requests.get(img_url, headers=self.headers, stream=True, timeout=10)
             response.raise_for_status()
             
@@ -456,6 +452,10 @@ class CarScraper:
                 for chunk in response.iter_content(chunk_size=8192):
                     if chunk:
                         f.write(chunk)
+            
+            # Add hash to tracked hashes
+            self.downloaded_hashes.add(img_hash)
+            logging.info(f"Successfully downloaded new image: {filename}")
             
             return category
             

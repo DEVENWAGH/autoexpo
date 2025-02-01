@@ -1,0 +1,7 @@
+setuptools>=68.0.0
+wheel>=0.40.0
+numpy>=1.26.0
+pandas>=2.1.0
+beautifulsoup4==4.12.2
+requests==2.31.0
+Pillow==10.0.1
