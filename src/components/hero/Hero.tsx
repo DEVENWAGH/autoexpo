@@ -12,6 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import localFont from 'next/font/local';
+import { useLogoStore } from '@/store/useLogoStore';
 
 const brunoFont = Bruno_Ace({
   subsets: ["latin"],
@@ -33,6 +34,7 @@ export default function Hero() {
   const [selectedVehicleType, setSelectedVehicleType] = useState("");
   const [selectedBrand, setSelectedBrand] = useState("");
   const [selectedModel, setSelectedModel] = useState("");
+  const setActiveCategory = useLogoStore(state => state.setActiveCategory);
 
   const carBudgetRanges = [
     "Under ₹5 Lakh",
@@ -100,7 +102,10 @@ export default function Hero() {
       </div>
       <div className="flex my-12 ml-5 justify-start bg-[#0C041F] w-[22rem] rounded-2xl items-center h-[30rem]">
         <div className="w-46 h-auto absolute px-4 md:px-6">
-          <Tabs defaultValue="cars" className="h-auto mx-auto" onValueChange={(value) => setActiveTab(value)}>
+          <Tabs defaultValue="cars" className="h-auto mx-auto" onValueChange={(value) => {
+            setActiveTab(value);
+            setActiveCategory(value as 'cars' | 'bikes');
+          }}>
             <TabsList className="grid h-auto grid-cols-2 [&>*[data-state=active]]:bg-[#7129a1]">
               <TabsTrigger value="cars" className={`h-16 text-lg ${Monument_Extended.className}`}>
                 Cars

@@ -12,6 +12,7 @@ export default function ThreeDLogoScroller({ logos }: Readonly<Props>) {
 
   useEffect(() => {
     const container = containerRef.current;
+    const currentContainer = containerRef.current;
     if (!container) return;
 
     // Add console log to debug logo loading
@@ -22,8 +23,12 @@ export default function ThreeDLogoScroller({ logos }: Readonly<Props>) {
     const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     
-    renderer.setSize(containerRef.current.clientWidth, containerRef.current.clientHeight);
-    containerRef.current.appendChild(renderer.domElement);
+    if (containerRef.current) {
+      renderer.setSize(containerRef.current.clientWidth, containerRef.current.clientHeight);
+    }
+    if (containerRef.current) {
+      containerRef.current.appendChild(renderer.domElement);
+    }
 
     // Create logo meshes
     const logosGroup = new THREE.Group();
@@ -73,8 +78,7 @@ export default function ThreeDLogoScroller({ logos }: Readonly<Props>) {
 
     // Cleanup
     return () => {
-      window.removeEventListener('resize', handleResize);
-      containerRef.current?.removeChild(renderer.domElement);
+      currentContainer?.removeChild(renderer.domElement);
       scene.clear();
     };
   }, [logos]);

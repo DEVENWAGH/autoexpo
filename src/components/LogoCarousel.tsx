@@ -68,12 +68,6 @@ export default function LogoCarousel({ logos }: Props) {
     return 0.5;
   };
 
-  const handleImageError = (
-    e: React.SyntheticEvent<HTMLImageElement, Event>,
-    logoPath: string
-  ) => {
-    console.error(`Failed to load image: ${logoPath}`);
-  };
 
   // Add auto-scroll animation
   useEffect(() => {
@@ -84,24 +78,11 @@ export default function LogoCarousel({ logos }: Props) {
     return () => clearInterval(interval);
   }, [logos.length]);
 
-  const calculatePosition = (index: number) => {
-    const totalLogos = logos.length;
-    const middleIndex = Math.floor(totalLogos / 2);
-    let relativeIndex = index - activeIndex;
-    
-    // Wrap around for infinite effect
-    if (relativeIndex > middleIndex) {
-      relativeIndex -= totalLogos;
-    } else if (relativeIndex < -middleIndex) {
-      relativeIndex += totalLogos;
-    }
-
-    return `${50 + (relativeIndex * 8)}%`;
-  };
 
   return (
-    <div 
+    <section 
       ref={containerRef}
+      aria-label="Logo carousel"
       className="relative h-56 overflow-hidden my-10 touch-none select-none cursor-grab active:cursor-grabbing"
       onMouseDown={handleDragStart}
       onMouseMove={handleDragMove}
@@ -110,11 +91,18 @@ export default function LogoCarousel({ logos }: Props) {
       onTouchStart={handleDragStart}
       onTouchMove={handleDragMove}
       onTouchEnd={handleDragEnd}
+      onKeyDown={(e) => {
+        if (e.key === 'ArrowLeft') {
+          setActiveIndex((prev) => (prev - 1 + logos.length) % logos.length);
+        } else if (e.key === 'ArrowRight') {
+          setActiveIndex((prev) => (prev + 1) % logos.length);
+        }
+      }}
     >
       <div className="flex items-center justify-center relative h-full">
         {[...logos, ...logos].map((logo, index) => (
           <div
-            key={index}
+            key={`${logo}-${index}`}
             className="absolute transition-all duration-500 ease-out"
             style={{
               transform: `translateX(-50%) scale(${getScale(index % logos.length)})`,
@@ -127,8 +115,8 @@ export default function LogoCarousel({ logos }: Props) {
               <Image
                 src={logo}
                 alt={`Brand logo ${index + 1}`}
-                width={120}
-                height={120}
+                width={logo.includes('kawasaki') ? 150 : 120}
+                height={logo.includes('kawasaki') ? 150 : 120}
                 className="object-contain p-3"
                 draggable={false}
               />
@@ -136,6 +124,6 @@ export default function LogoCarousel({ logos }: Props) {
           </div>
         ))}
       </div>
-    </div>
+    </section>
   );
 }
