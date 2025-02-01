@@ -101,7 +101,7 @@ export default function LogoCarousel({ logos }: Props) {
     >
       <div className="flex items-center justify-center relative h-full">
         {[...logos, ...logos].map((logo, index) => (
-          <div
+          <button
             key={`${logo}-${index}`}
             className="absolute transition-all duration-500 ease-out"
             style={{
@@ -110,8 +110,10 @@ export default function LogoCarousel({ logos }: Props) {
               opacity: getOpacity(index % logos.length),
               zIndex: 1000 - Math.abs(index % logos.length - activeIndex)
             }}
+            aria-label={`Brand logo ${index + 1}`}
+            onClick={() => setActiveIndex(index % logos.length)}
           >
-            <div className="w-48 h-48 flex items-center justify-center bg-white rounded-lg shadow-lg mx-4">
+            <button className="w-48 h-48 flex items-center justify-center bg-white rounded-lg shadow-lg mx-4">
               <Image
                 src={logo}
                 alt={`Brand logo ${index + 1}`}
@@ -120,8 +122,8 @@ export default function LogoCarousel({ logos }: Props) {
                 className="object-contain p-3"
                 draggable={false}
               />
-            </div>
-          </div>
+            </button>
+          </button>
         ))}
       </div>
     </section>
