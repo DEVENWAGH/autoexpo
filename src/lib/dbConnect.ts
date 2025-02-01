@@ -23,6 +23,8 @@ export async function dbConnect() {
         serverSelectionTimeoutMS: 5000,
         socketTimeoutMS: 45000,
         family: 4,
+        connectTimeoutMS: 10000, // Add connection timeout
+        retryWrites: true, // Enable retry writes
       };
 
       cached.promise = mongoose
@@ -35,10 +37,15 @@ export async function dbConnect() {
 
     cached.conn = await cached.promise;
 
+    cached.conn.on("connected", () => {
+      console.log("MongoDB connected successfully");
+    });
+
     // Handle connection errors
     cached.conn.on("error", (error) => {
       console.error("MongoDB connection error:", error);
       cached.conn = null;
+      cached.promise = null;
     });
 
     // Handle disconnection
