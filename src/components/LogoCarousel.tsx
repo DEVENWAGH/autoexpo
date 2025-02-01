@@ -113,7 +113,7 @@ export default function LogoCarousel({ logos }: Props) {
             aria-label={`Brand logo ${index + 1}`}
             onClick={() => setActiveIndex(index % logos.length)}
           >
-            <button className="w-48 h-48 flex items-center justify-center bg-white rounded-lg shadow-lg mx-4">
+            <div className="w-48 h-48 flex items-center justify-center bg-white rounded-lg shadow-lg mx-4">
               <Image
                 src={logo}
                 alt={`Brand logo ${index + 1}`}
@@ -122,7 +122,7 @@ export default function LogoCarousel({ logos }: Props) {
                 className="object-contain p-3"
                 draggable={false}
               />
-            </button>
+            </div>
           </button>
         ))}
       </div>
