@@ -21,7 +21,7 @@ export async function dbConnect() {
         bufferCommands: false,
       }
 
-      global.mongoose.promise = mongoose.connect(MONGODB_URI, opts)
+      global.mongoose.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => mongoose.connection)
     }
 
     const conn = await global.mongoose.promise
