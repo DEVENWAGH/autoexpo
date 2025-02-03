@@ -1,7 +1,6 @@
 "use client";
 
 import Image from 'next/image';
-import { Button } from "@/components/ui/button";
 import { Heart } from 'lucide-react';
 
 interface CardProps {
@@ -35,9 +34,10 @@ export default function Card({ id, image, name, priceRange, isFavorite, onFavori
       <div className="p-4">
         <h3 className="text-xl font-semibold text-white mb-2">{name}</h3>
         <p className="text-gray-400 mb-4">Price Range: {priceRange}</p>
-        <Button variant="secondary" className="w-full">
+        
+        <button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
           Explore
-        </Button>
+        </button>
       </div>
     </div>
   );

@@ -114,7 +114,7 @@ export default function Hero() {
       <div className="flex my-12 ml-5 justify-start bg-[#0C041F] w-[22rem] rounded-2xl items-center h-[30rem]">
         <div className="w-auto h-auto absolute px-4 md:px-6">
           <Tabs defaultValue="cars" className="h-auto mx-auto" onValueChange={handleTabChange}>
-            <TabsList className="grid h-auto grid-cols-2 [&>*[data-state=active]]:bg-[#7129a1]">
+            <TabsList className="grid h-auto grid-cols-2 bg-black text-white [&>*[data-state=active]]:bg-[#7129a1] [&>*]:text-white">
               <TabsTrigger value="cars" className={`h-16 text-lg ${Monument_Extended.className}`}>
                 Cars
               </TabsTrigger>

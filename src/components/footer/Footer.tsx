@@ -1,6 +1,5 @@
 import Image from 'next/image';
 import Link from 'next/link';
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 export default function Footer() {
@@ -47,7 +46,9 @@ export default function Footer() {
           <h3 className="text-xl font-semibold mb-4 text-white">Stay Updated</h3>
           <div className="flex gap-2">
             <Input type="email" placeholder="Email" className="bg-gray-900 text-white" />
-            <Button variant="secondary">Subscribe</Button>
+            <button className="bg-black text-white px-4 py-2 rounded">
+              Subscribe
+            </button>
           </div>
         </div>
       </div>
