@@ -1,7 +1,29 @@
 'use server'
 import User from "@/models/User";
 import { dbConnect } from "@/lib/dbConnect";
+import { redirect } from "next/navigation";
 import { hash } from "bcryptjs";
+import { CredentialsSignin } from "next-auth";
+import { signIn } from "@/auth";
+
+const login = async (formData: FormData) => {
+    const email = formData.get("email") as string;
+    const password = formData.get("password") as string;
+  
+    try {
+      await signIn("credentials", {
+        redirect: false,
+        callbackUrl: "/",
+        email,
+        password,
+      });
+    } catch (error) {
+      const someError = error as CredentialsSignin;
+      return someError.cause;
+    }
+    redirect("/");
+  };
+  
 const register = async (formData: FormData) => {
     try {
         const data = {
@@ -53,5 +75,9 @@ const register = async (formData: FormData) => {
         };
     }
 };
-
-export { register };
+const fetchAllUsers = async () => {
+    await dbConnect();
+    const users = await User.find({});
+    return users;
+  };
+export { register , login , fetchAllUsers };

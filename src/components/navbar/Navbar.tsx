@@ -77,9 +77,11 @@ export default function Navbar() {
           </p>
         </div>
         <div className="flex items-center gap-4">
+        <Link href="/login">
           <button className="px-5 py-2 border border-[#AF52DE] text-white rounded-lg font-abril">
             Login
           </button>
+        </Link>
           <Link href="/register">
             <button className="px-5 py-2 bg-[#8A63F0] border border-[#AF52DE] text-[#D0BCFF] font-abel tracking-wider">
               Sign Up
