@@ -1,9 +1,16 @@
+import { login } from "action/user";
 import { signIn } from "@/auth";
 import { Input } from "@/components/ui/input";
 import Image from "next/image";
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { getSession } from "@/lib/getSession";
 
-const Login = () => {
+const Login = async () => {
+  const session = await getSession();
+  const user = session?.user;
+  if (user) redirect("/");
+
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-[#030712] fixed inset-0">
       <div className="relative bg-gray-900/50 backdrop-blur-xl p-8 rounded-xl w-96 transform transition-all hover:scale-[1.01]">
@@ -22,7 +29,7 @@ const Login = () => {
           <h2 className="text-3xl font-bold text-center mb-8 text-white">
             Auto Explorer
           </h2>
-          <form className="space-y-6">
+          <form className="space-y-6" action={login}>
             <div>
               <label
                 htmlFor="email"
