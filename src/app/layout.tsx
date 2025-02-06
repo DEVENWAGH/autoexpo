@@ -4,7 +4,6 @@ import "./globals.css";
 import "@radix-ui/themes/styles.css";
 import { Theme } from "@radix-ui/themes";
 import { SessionProvider } from "next-auth/react";
-import Navbar from "@/components/navbar/Navbar";  // Add this import
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -34,7 +33,6 @@ export default function RootLayout({
       <body className={bodyClasses} suppressHydrationWarning>
         <SessionProvider>
           <Theme>
-            <Navbar />
             <div className="flex items-center justify-center min-h-screen">
               {children}
             </div>
