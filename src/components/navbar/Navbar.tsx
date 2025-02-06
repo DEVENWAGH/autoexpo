@@ -4,6 +4,8 @@ import dynamic from "next/dynamic";
 import location from "../../app/location.json";
 import localFont from "next/font/local";
 import Link from "next/link";
+import { useSession, signOut } from "next-auth/react";
+import { useState } from "react";
 
 const MonumentExtended = localFont({
   src: "../../app/fonts/MonumentExtended-Regular.ttf",
@@ -15,6 +17,9 @@ const MonumentExtended = localFont({
 const Lottie = dynamic(() => import("react-lottie"), { ssr: false });
 
 export default function Navbar() {
+  const { data: session } = useSession();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
   return (
     <nav
       className={`${MonumentExtended.className} flex relative justify-between px-16 h-[8rem] bg-[#0C041F] backdrop-blur-sm`}
@@ -77,16 +82,29 @@ export default function Navbar() {
           </p>
         </div>
         <div className="flex items-center gap-4">
-        <Link href="/login">
-          <button className="px-5 py-2 border border-[#AF52DE] text-white rounded-lg font-abril">
-            Login
-          </button>
-        </Link>
-          <Link href="/register">
-            <button className="px-5 py-2 bg-[#8A63F0] border border-[#AF52DE] text-[#D0BCFF] font-abel tracking-wider">
-              Sign Up
+          {session ? (
+            <button
+              onClick={() => signOut()}
+              className="px-4 py-2 rounded-lg bg-red-500 hover:bg-red-600 text-white transition-colors"
+            >
+              Logout
             </button>
-          </Link>
+          ) : (
+            <>
+              <Link
+                href="/login"
+                className="text-gray-300 hover:text-white transition-colors"
+              >
+                Login
+              </Link>
+              <Link
+                href="/register"
+                className="px-4 py-2 rounded-lg bg-blue-500 hover:bg-blue-600 text-white transition-colors"
+              >
+                Sign Up
+              </Link>
+            </>
+          )}
         </div>
       </div>
     </nav>
