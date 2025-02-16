@@ -17,7 +17,7 @@ const MonumentExtended = localFont({
 const Lottie = dynamic(() => import("react-lottie"), { ssr: false });
 
 export default function Navbar() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession(); // Add status
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
@@ -82,7 +82,7 @@ export default function Navbar() {
           </p>
         </div>
         <div className="flex items-center gap-4">
-          {session ? (
+          {status === 'authenticated' && session ? (
             <button
               onClick={() => signOut()}
               className="px-4 py-2 rounded-lg bg-red-500 hover:bg-red-600 text-white transition-colors"

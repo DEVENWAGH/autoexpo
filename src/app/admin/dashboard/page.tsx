@@ -3,6 +3,7 @@
 import { Car, Bike, Eye, Calendar } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useSession } from "next-auth/react";
 
 const popularCars = [
     { name: 'Honda Civic 2023', views: 1234, category: 'Car', trend: '+15%' },
@@ -43,27 +44,26 @@ const recentSignups = [
 ];
 
 const Dashboard = () => {
+    const { data: session, status } = useSession();
+    const router = useRouter();
     const [showCars, setShowCars] = useState(true);
     const activeVehicles = showCars ? popularCars : popularBikes;
-    const router = useRouter();
 
     useEffect(() => {
-        // Check user role on component mount
-        const checkRole = async () => {
-            try {
-                const res = await fetch('/api/auth/me');
-                const data = await res.json();
-                
-                if (!data.user || data.user.role !== 'admin') {
-                    router.push('/unauthorized');
-                }
-            } catch (error) {
-                router.push('/login');
-            }
-        };
+        console.log("Current session:", session); // For debugging
+        console.log("User role:", session?.user?.role); // For debugging
 
-        checkRole();
-    }, [router]);
+        if (status === "loading") return;
+
+        if (!session || session.user?.role !== "admin") {
+            router.push("/unauthorized");
+        }
+    }, [session, status, router]);
+
+    // Don't render anything while checking authentication
+    if (status === "loading" || !session) {
+        return null;
+    }
 
     return (
         <div className="min-h-screen w-full bg-black">

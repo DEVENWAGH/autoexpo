@@ -2,7 +2,7 @@ import NextAuth, { CredentialsSignin } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
 import { dbConnect } from "@/lib/dbConnect";
-import User  from "./models/User";
+import User from "./models/User";
 import { compare } from "bcryptjs";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
@@ -46,15 +46,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           throw new Error("Password did not matched");
         }
 
-        const userData = {
-          firstName: user.firstName,
-          lastName: user.lastName,
+        return {
+          id: user._id.toString(),
           email: user.email,
-          role: user.role,
-          id: user._id,
+          name: `${user.firstName} ${user.lastName}`,
+          role: user.role // Ensure role is included
         };
-
-        return userData;
       },
     }),
   ],
@@ -65,16 +62,20 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
   callbacks: {
     async session({ session, token }) {
-      if (token?.sub && token?.role) {
-        session.user.id = token.sub;
-        session.user.role = token.role;
-      }
-      return session;
+      return {
+        ...session,
+        user: {
+          ...session.user,
+          id: token.id,
+          role: token.role,
+        },
+      };
     },
 
     async jwt({ token, user }) {
       if (user) {
         token.role = user.role;
+        token.id = user.id;
       }
       return token;
     },
