@@ -8,39 +8,68 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Eye, EyeOff } from 'lucide-react';
 import { useFormStore } from '@/store/useFormStore';
+import { Alert } from "@/components/ui/Alert";
+import { registerSchema } from "@/lib/validations/auth";
 
 const Register = () => {
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
-  const { errors, setError, clearErrors, formData, setFormData } = useFormStore();
+  const { errors, setError: setFormError, clearErrors, formData, setFormData } = useFormStore();
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
   const handleSubmit = async (formData: FormData) => {
-    clearErrors();
+    try {
+      const data = {
+        firstName: formData.get('firstName') as string,
+        lastName: formData.get('lastName') as string,
+        email: formData.get('email') as string,
+        password: formData.get('password') as string,
+      };
 
-    const data = {
-      firstName: formData.get('firstName') as string,
-      lastName: formData.get('lastName') as string,
-      email: formData.get('email') as string,
-    };
-    setFormData(data);
-
-    const result = await register(formData);
-
-    if (result.error) {
-      if (result.error.includes('email')) {
-        setError('email', result.error);
-        return; // Prevent form reset
-      } else if (result.error.includes('password')) {
-        setError('password', result.error);
-        return; // Prevent form reset
-      } else {
-        setError('general', result.error);
-        return; // Prevent form reset
+      // Validate the form data
+      const result = registerSchema.safeParse(data);
+      if (!result.success) {
+        const errors: Record<string, string> = {};
+        result.error.issues.forEach((issue) => {
+          errors[issue.path[0]] = issue.message;
+        });
+        setValidationErrors(errors);
+        return;
       }
-    }
 
-    if (result.success) {
-      router.push('/login');
+      setValidationErrors({});
+
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
+
+      const responseData = await res.json();
+
+      if (!res.ok) {
+        if (res.status === 409) {
+          setErrorMessage('Email already registered');
+        } else if (responseData.error) {
+          setErrorMessage(responseData.error);
+        } else {
+          setErrorMessage('An error occurred during registration');
+        }
+        return;
+      }
+
+      setSuccess('Registration successful! Redirecting to login...');
+      setTimeout(() => {
+        router.push('/login');
+      }, 2000);
+
+    } catch (error) {
+      console.error('Registration error:', error);
+      setErrorMessage('An error occurred during registration');
     }
   };
 
@@ -65,6 +94,9 @@ const Register = () => {
             </p>
           </div>
 
+          {errorMessage && <Alert type="error" message={errorMessage} />}
+          {success && <Alert type="success" message={success} />}
+
           <form action={handleSubmit} className="mt-8 space-y-6">
             {errors.general && (
               <div className="p-3 mb-4 text-sm text-red-500 bg-red-500/10 border border-red-500/20 rounded-lg">
@@ -84,9 +116,12 @@ const Register = () => {
                   type="text"
                   defaultValue={formData.firstName}
                   placeholder="Enter first name"
-                  className="bg-gray-700 text-white w-full"
+                  className={`bg-gray-700 text-white w-full ${validationErrors.firstName ? 'border-red-500' : 'border-gray-600'}`}
                   required
                 />
+                {validationErrors.firstName && (
+                  <p className="mt-1 text-sm text-red-500">{validationErrors.firstName}</p>
+                )}
               </div>
               <div className="flex-1">
                 <label className="text-white block text-sm font-medium mb-1" htmlFor="lastName">
@@ -98,9 +133,12 @@ const Register = () => {
                   type="text"
                   defaultValue={formData.lastName}
                   placeholder="Enter last name"
-                  className="bg-gray-700 text-white w-full"
+                  className={`bg-gray-700 text-white w-full ${validationErrors.lastName ? 'border-red-500' : 'border-gray-600'}`}
                   required
                 />
+                {validationErrors.lastName && (
+                  <p className="mt-1 text-sm text-red-500">{validationErrors.lastName}</p>
+                )}
               </div>
             </div>
 
@@ -115,11 +153,11 @@ const Register = () => {
                 type="email"
                 defaultValue={formData.email}
                 placeholder="email@example.com"
-                className="bg-gray-700 text-white w-full"
+                className={`bg-gray-700 text-white w-full ${validationErrors.email ? 'border-red-500' : 'border-gray-600'}`}
                 required
               />
-              {errors.email && (
-                <p className="mt-1 text-sm text-red-500">{errors.email}</p>
+              {validationErrors.email && (
+                <p className="mt-1 text-sm text-red-500">{validationErrors.email}</p>
               )}
             </div>
 
@@ -134,7 +172,7 @@ const Register = () => {
                   name="password"
                   type={showPassword ? "text" : "password"}
                   placeholder="••••••••"
-                  className="w-full px-4 py-2 text-gray-300 bg-gray-700/50 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  className={`w-full px-4 py-2 text-gray-300 bg-gray-700/50 border ${validationErrors.password ? 'border-red-500' : 'border-gray-600'} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all`}
                   required
                 />
                 <button
@@ -145,8 +183,8 @@ const Register = () => {
                   {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                 </button>
               </div>
-              {errors.password && (
-                <p className="mt-1 text-sm text-red-500">{errors.password}</p>
+              {validationErrors.password && (
+                <p className="mt-1 text-sm text-red-500">{validationErrors.password}</p>
               )}
             </div>
 
