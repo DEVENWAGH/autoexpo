@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Car, Bike, Plus } from 'lucide-react';
-import { ImageUpload } from '@/components/ui/ImageUpload';
+import { Car, Bike } from 'lucide-react';
+import { MultipleImageUpload } from "@/components/ui/MultipleImageUpload";
+import { useVehicleStore } from '@/store/useVehicleStore';
 
 const FUEL_TYPES = [
   'Petrol',
@@ -23,53 +23,27 @@ const TRANSMISSION_TYPES = [
   'DSG'
 ] as const;
 
-type VehicleType = 'cars' | 'bikes';
-
-interface VehicleFormData {
-  name: string;
-  brand: string;
-  price: {
-    starting: number;
-    ending: number;
-  };
-  specs: {
-    engine: string;
-    power: string;
-    torque: string;
-    transmission: string;
-    fuelType: string;
-    mileage: string;
-    topSpeed: string;
-    acceleration: string;
-    seatingCapacity?: number;
-  };
-  images: {
-    main: string;
-    mainFileId: string;
-    gallery: Array<{ url: string, fileId: string }>;
-  };
-  description: string;
-}
-
 export default function NewVehicle() {
   const router = useRouter();
-  const [vehicleType, setVehicleType] = useState<VehicleType>('cars');
-  const [loading, setLoading] = useState(false);
-  const [mainImage, setMainImage] = useState({ url: '', fileId: '' });
-  const [gallery, setGallery] = useState<Array<{ url: string, fileId: string }>>([]);
-  const [error, setError] = useState<string>('');
-
-  const handleMainImageUpload = (url: string, fileId: string) => {
-    setMainImage({ url, fileId });
-  };
-
-  const handleGalleryImageUpload = (url: string, fileId: string) => {
-    setGallery(prev => [...prev, { url, fileId }]);
-  };
-
-  const removeGalleryImage = (fileId: string) => {
-    setGallery(prev => prev.filter(img => img.fileId !== fileId));
-  };
+  const {
+    vehicleType,
+    mainImages,
+    interiorImages,
+    exteriorImages,
+    colorImages,
+    galleryImages,
+    loading,
+    error,
+    setVehicleType,
+    setMainImages,
+    setInteriorImages,
+    setExteriorImages,
+    setColorImages,
+    setGalleryImages,
+    setLoading,
+    setError,
+    reset
+  } = useVehicleStore();
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -79,15 +53,11 @@ export default function NewVehicle() {
     try {
       const formData = new FormData(e.currentTarget);
       
-      if (!mainImage.url) {
-        throw new Error('Main image is required');
+      if (mainImages.length === 0) {
+        throw new Error('At least one main image is required');
       }
 
-      if (!formData.get('name') || !formData.get('brand')) {
-        throw new Error('Name and brand are required');
-      }
-
-      const data: VehicleFormData = {
+      const commonData = {
         name: formData.get('name') as string,
         brand: formData.get('brand') as string,
         price: {
@@ -107,13 +77,23 @@ export default function NewVehicle() {
             seatingCapacity: Number(formData.get('seatingCapacity'))
           })
         },
-        images: {
-          main: mainImage.url,
-          mainFileId: mainImage.fileId,
-          gallery: gallery
-        },
         description: formData.get('description') as string
       };
+
+      const data = vehicleType === 'cars' 
+        ? {
+            ...commonData,
+            mainImages,
+            interiorImages,
+            exteriorImages,
+            colorImages
+          }
+        : {
+            ...commonData,
+            mainImages,
+            colorImages,
+            galleryImages
+          };
 
       const res = await fetch(`/api/brands/vehicles?type=${vehicleType}`, {
         method: 'POST',
@@ -126,6 +106,7 @@ export default function NewVehicle() {
         throw new Error(errorData.error || 'Failed to create vehicle');
       }
 
+      reset(); // Reset store after successful submission
       router.push('/brands/dashboard');
       router.refresh();
 
@@ -137,12 +118,199 @@ export default function NewVehicle() {
     }
   };
 
+  const renderSpecifications = () => (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+      <div>
+        <label className="block text-sm font-medium text-gray-300">Engine</label>
+        <input
+          type="text"
+          name="engine"
+          required
+          className="mt-1 block w-full rounded bg-gray-800 border-gray-700 text-white"
+        />
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-300">Power</label>
+        <input
+          type="text"
+          name="power"
+          required
+          className="mt-1 block w-full rounded bg-gray-800 border-gray-700 text-white"
+        />
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-300">Torque</label>
+        <input
+          type="text"
+          name="torque"
+          required
+          className="mt-1 block w-full rounded bg-gray-800 border-gray-700 text-white"
+        />
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-300">Transmission</label>
+        <select
+          name="transmission"
+          required
+          className="mt-1 block w-full rounded bg-gray-800 border-gray-700 text-white px-3 py-2"
+        >
+          <option value="">Select Transmission</option>
+          {TRANSMISSION_TYPES.map((type) => (
+            <option key={type} value={type}>
+              {type}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-300">Fuel Type</label>
+        <select
+          name="fuelType"
+          required
+          className="mt-1 block w-full rounded bg-gray-800 border-gray-700 text-white px-3 py-2"
+        >
+          <option value="">Select Fuel Type</option>
+          {FUEL_TYPES.map((type) => (
+            <option key={type} value={type}>
+              {type}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-300">Mileage</label>
+        <input
+          type="text"
+          name="mileage"
+          required
+          className="mt-1 block w-full rounded bg-gray-800 border-gray-700 text-white"
+        />
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-300">Top Speed</label>
+        <input
+          type="text"
+          name="topSpeed"
+          required
+          className="mt-1 block w-full rounded bg-gray-800 border-gray-700 text-white"
+        />
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-300">Acceleration (0-100)</label>
+        <input
+          type="text"
+          name="acceleration"
+          required
+          className="mt-1 block w-full rounded bg-gray-800 border-gray-700 text-white"
+        />
+      </div>
+      {vehicleType === 'cars' && (
+        <div>
+          <label className="block text-sm font-medium text-gray-300">Seating Capacity</label>
+          <input
+            type="number"
+            name="seatingCapacity"
+            required
+            className="mt-1 block w-full rounded bg-gray-800 border-gray-700 text-white"
+          />
+        </div>
+      )}
+    </div>
+  );
+
+  const renderImageUploads = () => (
+    vehicleType === 'cars' ? (
+      <>
+        <MultipleImageUpload
+          images={mainImages}
+          onChange={setMainImages}
+          onRemove={(index) => {
+            const newImages = [...mainImages];
+            newImages.splice(index, 1);
+            setMainImages(newImages);
+          }}
+          maxFiles={5}
+          label="Main Images"
+        />
+        <MultipleImageUpload
+          images={interiorImages}
+          onChange={setInteriorImages}
+          onRemove={(index) => {
+            const newImages = [...interiorImages];
+            newImages.splice(index, 1);
+            setInteriorImages(newImages);
+          }}
+          maxFiles={8}
+          label="Interior Images"
+        />
+        <MultipleImageUpload
+          images={exteriorImages}
+          onChange={setExteriorImages}
+          onRemove={(index) => {
+            const newImages = [...exteriorImages];
+            newImages.splice(index, 1);
+            setExteriorImages(newImages);
+          }}
+          maxFiles={8}
+          label="Exterior Images"
+        />
+        <MultipleImageUpload
+          images={colorImages}
+          onChange={setColorImages}
+          onRemove={(index) => {
+            const newImages = [...colorImages];
+            newImages.splice(index, 1);
+            setColorImages(newImages);
+          }}
+          maxFiles={10}
+          label="Color Variants"
+        />
+      </>
+    ) : (
+      <>
+        <MultipleImageUpload
+          images={mainImages}
+          onChange={setMainImages}
+          onRemove={(index) => {
+            const newImages = [...mainImages];
+            newImages.splice(index, 1);
+            setMainImages(newImages);
+          }}
+          maxFiles={5}
+          label="Main Images"
+        />
+        <MultipleImageUpload
+          images={colorImages}
+          onChange={setColorImages}
+          onRemove={(index) => {
+            const newImages = [...colorImages];
+            newImages.splice(index, 1);
+            setColorImages(newImages);
+          }}
+          maxFiles={10}
+          label="Color Variants"
+        />
+        <MultipleImageUpload
+          images={galleryImages}
+          onChange={setGalleryImages}
+          onRemove={(index) => {
+            const newImages = [...galleryImages];
+            newImages.splice(index, 1);
+            setGalleryImages(newImages);
+          }}
+          maxFiles={15}
+          label="Gallery Images"
+        />
+      </>
+    )
+  );
+
   return (
-    <div className="min-h-screen bg-gray-950 p-8">
+    <main className="min-h-screen bg-gray-950 p-8">
       <form onSubmit={handleSubmit} className="max-w-4xl mx-auto space-y-8">
         <div className="bg-gray-900 p-6 rounded-lg border border-gray-800">
           <h1 className="text-2xl font-bold text-white mb-6">Add New Vehicle</h1>
-
+          
           {/* Vehicle Type Selection */}
           <div className="flex gap-4 mb-6">
             <button
@@ -199,7 +367,6 @@ export default function NewVehicle() {
             </div>
           </div>
 
-          {/* Price Range */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-1">
@@ -226,158 +393,10 @@ export default function NewVehicle() {
           </div>
 
           {/* Specifications */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-300">Engine</label>
-              <input
-                type="text"
-                name="engine"
-                required
-                className="mt-1 block w-full rounded bg-gray-800 border-gray-700 text-white"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-300">Power</label>
-              <input
-                type="text"
-                name="power"
-                required
-                className="mt-1 block w-full rounded bg-gray-800 border-gray-700 text-white"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-300">Torque</label>
-              <input
-                type="text"
-                name="torque"
-                required
-                className="mt-1 block w-full rounded bg-gray-800 border-gray-700 text-white"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-300">Transmission</label>
-              <select
-                name="transmission"
-                required
-                className="mt-1 block w-full rounded bg-gray-800 border-gray-700 text-white px-3 py-2"
-              >
-                <option value="">Select Transmission</option>
-                {TRANSMISSION_TYPES.map((type) => (
-                  <option key={type} value={type}>
-                    {type}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-300">Fuel Type</label>
-              <select
-                name="fuelType"
-                required
-                className="mt-1 block w-full rounded bg-gray-800 border-gray-700 text-white px-3 py-2"
-              >
-                <option value="">Select Fuel Type</option>
-                {FUEL_TYPES.map((type) => (
-                  <option key={type} value={type}>
-                    {type}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-300">Mileage</label>
-              <input
-                type="text"
-                name="mileage"
-                required
-                className="mt-1 block w-full rounded bg-gray-800 border-gray-700 text-white"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-300">Top Speed</label>
-              <input
-                type="text"
-                name="topSpeed"
-                required
-                className="mt-1 block w-full rounded bg-gray-800 border-gray-700 text-white"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-300">Acceleration (0-100)</label>
-              <input
-                type="text"
-                name="acceleration"
-                required
-                className="mt-1 block w-full rounded bg-gray-800 border-gray-700 text-white"
-              />
-            </div>
-            {vehicleType === 'cars' && (
-              <div>
-                <label className="block text-sm font-medium text-gray-300">Seating Capacity</label>
-                <input
-                  type="number"
-                  name="seatingCapacity"
-                  required
-                  className="mt-1 block w-full rounded bg-gray-800 border-gray-700 text-white"
-                />
-              </div>
-            )}
-          </div>
+          {renderSpecifications()}
 
-          {/* Images */}
-          <div className="space-y-4 mb-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Main Image
-              </label>
-              <ImageUpload
-                onUploadSuccess={handleMainImageUpload}
-                onUploadError={(error) => setError(error.message)}
-                label="Upload Main Image"
-              />
-              {mainImage.url && (
-                <div className="mt-2">
-                  <img
-                    src={mainImage.url}
-                    alt="Main vehicle image"
-                    className="w-40 h-40 object-cover rounded"
-                  />
-                </div>
-              )}
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Gallery Images
-              </label>
-              <ImageUpload
-                onUploadSuccess={handleGalleryImageUpload}
-                onUploadError={(error) => setError(error.message)}
-                isMultiple
-                label="Upload Gallery Images"
-              />
-              {gallery.length > 0 && (
-                <div className="mt-2 grid grid-cols-2 md:grid-cols-4 gap-4">
-                  {gallery.map((img) => (
-                    <div key={img.fileId} className="relative">
-                      <img
-                        src={img.url}
-                        alt="Gallery image"
-                        className="w-full h-32 object-cover rounded"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => removeGalleryImage(img.fileId)}
-                        className="absolute top-1 right-1 p-1 bg-red-500 rounded-full"
-                      >
-                        <Plus className="w-4 h-4 text-white transform rotate-45" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
+          {/* Image Uploads */}
+          {renderImageUploads()}
 
           {/* Description */}
           <div>
@@ -393,14 +412,12 @@ export default function NewVehicle() {
           </div>
         </div>
 
-        {/* Error Message */}
         {error && (
           <div className="bg-red-500/10 border border-red-500 text-red-500 px-4 py-2 rounded">
             {error}
           </div>
         )}
 
-        {/* Submit Button */}
         <button
           type="submit"
           disabled={loading}
@@ -411,6 +428,6 @@ export default function NewVehicle() {
           {loading ? 'Creating...' : 'Create Vehicle'}
         </button>
       </form>
-    </div>
+    </main>
   );
 }

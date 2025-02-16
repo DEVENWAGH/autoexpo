@@ -1,37 +1,38 @@
 import ImageKit from "imagekit";
 
-// Check if we're on the client side
-const isClient = typeof window !== 'undefined';
-
-// Only create ImageKit instance on server-side
-const isServer = typeof window === 'undefined';
-
-if (isClient && (!process.env.NEXT_PUBLIC_IMAGEKIT_PUBLIC_KEY || !process.env.NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT)) {
-  console.error('ImageKit public environment variables are not properly configured');
-}
-
-// Server-side check for all variables
-if (!isClient && (!process.env.NEXT_PUBLIC_IMAGEKIT_PUBLIC_KEY || !process.env.IMAGEKIT_PRIVATE_KEY || !process.env.NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT)) {
-  throw new Error('ImageKit environment variables are not properly configured');
-}
-
-// Server-side ImageKit instance
-export const imageKit = isServer ? new ImageKit({
-  publicKey: process.env.NEXT_PUBLIC_IMAGEKIT_PUBLIC_KEY!,
-  privateKey: process.env.IMAGEKIT_PRIVATE_KEY!,
-  urlEndpoint: process.env.NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT!
-}) : null;
-
-// Client-side config - no private key needed
-export const imageKitConfig = {
+console.log('Loading ImageKit configuration...');
+console.log('Environment variables:', {
   publicKey: process.env.NEXT_PUBLIC_IMAGEKIT_PUBLIC_KEY,
-  urlEndpoint: process.env.NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT
+  urlEndpoint: process.env.NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT,
+  hasPrivateKey: !!process.env.IMAGEKIT_PRIVATE_KEY
+});
+
+const initImageKit = () => {
+  if (!process.env.NEXT_PUBLIC_PUBLIC_KEY) {
+    console.error('Missing NEXT_PUBLIC_PUBLIC_KEY');
+    return null;
+  }
+  if (!process.env.PRIVATE_KEY) {
+    console.error('Missing PRIVATE_KEY');
+    return null;
+  }
+  if (!process.env.NEXT_PUBLIC_URL_ENDPOINT) {
+    console.error('Missing NEXT_PUBLIC_URL_ENDPOINT');
+    return null;
+  }
+
+  return new ImageKit({
+    publicKey: process.env.NEXT_PUBLIC_PUBLIC_KEY,
+    privateKey: process.env.PRIVATE_KEY,
+    urlEndpoint: process.env.NEXT_PUBLIC_URL_ENDPOINT
+  });
 };
 
-// Server-side signature generation
-export const getAuthenticationParameters = () => {
+export const imageKit = initImageKit();
+
+export const verifyImageKitConfig = () => {
   if (!imageKit) {
-    throw new Error('ImageKit not initialized on server');
+    throw new Error('ImageKit not initialized. Check environment variables.');
   }
-  return imageKit.getAuthenticationParameters();
+  return true;
 };

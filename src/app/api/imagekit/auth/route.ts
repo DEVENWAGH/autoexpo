@@ -1,18 +1,14 @@
+import { imageKit } from "@/lib/imageKit";
 import { NextResponse } from "next/server";
-import { getAuthenticationParameters } from "@/lib/imageKit";
-import { auth } from "@/auth";
 
 export async function GET() {
   try {
-    const session = await auth();
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const params = getAuthenticationParameters();
-    return NextResponse.json(params);
+    const result = imageKit.getAuthenticationParameters();
+    return NextResponse.json(result);
   } catch (error) {
-    console.error('Auth error:', error);
-    return NextResponse.json({ error: "Failed to generate signature" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Authentication failed" },
+      { status: 500 }
+    );
   }
 }

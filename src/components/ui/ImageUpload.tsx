@@ -1,77 +1,91 @@
-'use client';
-
-import { useCallback, useState } from 'react';
-import { Upload } from 'lucide-react';
+import { UploadCloud, X } from "lucide-react";
+import Image from "next/image";
+import { useCallback, useState } from "react";
+import { useDropzone } from "react-dropzone";
 
 interface ImageUploadProps {
-    onUploadSuccess: (url: string, fileId: string) => void;
-    onUploadError: (error: Error) => void;
-    label?: string;
-    isMultiple?: boolean;
+  value?: string;
+  onChange: (value: string) => void;
+  onRemove: (value: string) => void;
+  disabled?: boolean;
 }
 
-export function ImageUpload({ 
-    onUploadSuccess, 
-    onUploadError, 
-    label = 'Upload Image',
-    isMultiple = false 
+export function ImageUpload({
+  value,
+  onChange,
+  onRemove,
+  disabled
 }: ImageUploadProps) {
-    const [uploading, setUploading] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
 
-    const handleUpload = useCallback(async (file: File) => {
-        try {
-            setUploading(true);
-            const formData = new FormData();
-            formData.append('file', file);
+  const onDrop = useCallback(async (acceptedFiles: File[]) => {
+    setIsUploading(true);
+    try {
+      const file = acceptedFiles[0];
+      
+      const formData = new FormData();
+      formData.append("file", file);
 
-            const response = await fetch('/api/imagekit/upload', {
-                method: 'POST',
-                body: formData,
-            });
+      const response = await fetch("/api/imagekit/upload", {
+        method: "POST",
+        body: formData,
+      });
 
-            if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.message || 'Upload failed');
-            }
+      const data = await response.json();
 
-            const data = await response.json();
-            onUploadSuccess(data.url, data.fileId);
-        } catch (error) {
-            onUploadError(error instanceof Error ? error : new Error('Upload failed'));
-        } finally {
-            setUploading(false);
-        }
-    }, [onUploadSuccess, onUploadError]);
+      if (!response.ok) {
+        throw new Error(data.error || "Upload failed");
+      }
 
-    const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-        const files = e.target.files;
-        if (!files?.length) return;
+      onChange(data.url);
+    } catch (error) {
+      console.error("Error uploading:", error);
+    } finally {
+      setIsUploading(false);
+    }
+  }, [onChange]);
 
-        if (isMultiple) {
-            Array.from(files).forEach(file => handleUpload(file));
-        } else {
-            handleUpload(files[0]);
-        }
-    }, [handleUpload, isMultiple]);
+  const { getRootProps, getInputProps } = useDropzone({
+    onDrop,
+    accept: {
+      'image/*': ['.png', '.jpg', '.jpeg', '.gif']
+    },
+    maxFiles: 1,
+    disabled: isUploading || disabled
+  });
 
-    return (
-        <div className="relative">
-            <input
-                type="file"
-                onChange={handleChange}
-                multiple={isMultiple}
-                accept="image/*"
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                disabled={uploading}
-            />
-            <div className={`flex items-center justify-center px-6 py-4 border-2 border-dashed rounded-lg ${
-                uploading ? 'border-gray-600 bg-gray-800/50' : 'border-gray-700 hover:border-gray-500'
-            }`}>
-                <div className="flex items-center gap-2 text-sm text-gray-400">
-                    <Upload className="w-5 h-5" />
-                    <span>{uploading ? 'Uploading...' : label}</span>
-                </div>
-            </div>
+  return (
+    <div className="mb-4 relative">
+      {value ? (
+        <div className="relative w-full h-60">
+          <Image
+            src={value}
+            alt="Upload"
+            className="object-cover"
+            fill
+          />
+          <button
+            onClick={() => onRemove(value)}
+            className="absolute top-2 right-2 p-2 bg-red-500 hover:bg-red-600 text-white rounded-full"
+            type="button"
+          >
+            <X className="h-4 w-4" />
+          </button>
         </div>
-    );
+      ) : (
+        <div
+          {...getRootProps()}
+          className="border-2 border-dashed border-gray-300 p-4 rounded-lg hover:bg-gray-50 transition cursor-pointer"
+        >
+          <input {...getInputProps()} />
+          <div className="flex flex-col items-center justify-center gap-2">
+            <UploadCloud className="h-10 w-10 text-gray-400" />
+            <p className="text-sm text-gray-500">
+              {isUploading ? "Uploading..." : "Drop an image here, or click to select"}
+            </p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }

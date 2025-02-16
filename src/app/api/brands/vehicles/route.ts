@@ -1,86 +1,116 @@
-import { NextRequest, NextResponse } from "next/server";
-import { dbConnect } from "@/lib/dbConnect";
+import { NextResponse } from "next/server";
 import { Car } from "@/models/Car";
 import { Bike } from "@/models/Bike";
-import { auth } from "@/auth";
-
-export async function POST(req: NextRequest) {
+import { dbConnect } from "@/lib/dbConnect";
+export async function POST(request: Request) {
   try {
     await dbConnect();
-    const session = await auth();
     
-    if (!session?.user) {
+    const data = await request.json();
+    const type = new URL(request.url).searchParams.get('type');
+    
+    // Validate vehicle type
+    if (!type || !['cars', 'bikes'].includes(type)) {
       return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
-    const searchParams = req.nextUrl.searchParams;
-    const type = searchParams.get('type');
-    const data = await req.json();
-
-    if (!type || (type !== 'cars' && type !== 'bikes')) {
-      return NextResponse.json(
-        { error: 'Invalid vehicle type' },
+        { error: "Invalid vehicle type" },
         { status: 400 }
       );
     }
 
+    // Validate required image arrays
+    if (type === 'cars') {
+      if (!data.mainImages?.length) {
+        return NextResponse.json(
+          { error: "At least one main image is required" },
+          { status: 400 }
+        );
+      }
+      if (!data.interiorImages?.length) {
+        return NextResponse.json(
+          { error: "At least one interior image is required" },
+          { status: 400 }
+        );
+      }
+      if (!data.exteriorImages?.length) {
+        return NextResponse.json(
+          { error: "At least one exterior image is required" },
+          { status: 400 }
+        );
+      }
+    } else {
+      if (!data.mainImages?.length) {
+        return NextResponse.json(
+          { error: "At least one main image is required" },
+          { status: 400 }
+        );
+      }
+      if (!data.galleryImages?.length) {
+        return NextResponse.json(
+          { error: "At least one gallery image is required" },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Create vehicle with appropriate model
     const Model = type === 'cars' ? Car : Bike;
-    
-    // Add error handling for missing required fields
-    if (!data.name || !data.brand || !data.images?.main) {
-      return NextResponse.json(
-        { error: 'Missing required fields' },
-        { status: 400 }
-      );
-    }
-
     const vehicle = await Model.create({
       ...data,
-      createdBy: session.user.id
+      // Add user ID when auth is implemented
+      createdBy: '65f2d6169ced5366aab6ab09' // Temporary: Replace with actual user ID
     });
 
     return NextResponse.json({
       success: true,
-      data: vehicle
+      vehicle
     });
 
   } catch (error) {
-    console.error('Vehicle creation error:', error);
+    console.error("Vehicle creation error:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to create vehicle' },
+      { 
+        success: false, 
+        error: "Failed to create vehicle",
+        details: error instanceof Error ? error.message : "Unknown error"
+      },
       { status: 500 }
     );
   }
 }
 
-export async function GET(req: Request) {
+export async function GET(request: Request) {
   try {
     await dbConnect();
-    const { searchParams } = new URL(req.url);
-    const type = searchParams.get('type') || 'cars';
-    const session = await auth();
-
-    if (!session?.user) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
+    
+    const type = new URL(request.url).searchParams.get('type');
+    
+    let vehicles;
+    if (type === 'cars') {
+      vehicles = await Car.find().sort({ createdAt: -1 });
+    } else if (type === 'bikes') {
+      vehicles = await Bike.find().sort({ createdAt: -1 });
+    } else {
+      // If no type specified, get both cars and bikes
+      const [cars, bikes] = await Promise.all([
+        Car.find().sort({ createdAt: -1 }),
+        Bike.find().sort({ createdAt: -1 })
+      ]);
+      vehicles = [...cars, ...bikes].sort((a, b) => 
+        b.createdAt.getTime() - a.createdAt.getTime()
       );
     }
-
-    const Model = type === 'cars' ? Car : Bike;
     
-    const vehicles = await Model.find({
-      createdBy: session.user.id
-    }).sort({ createdAt: -1 });
-
-    return NextResponse.json({ vehicles });
+    return NextResponse.json({
+      success: true,
+      vehicles
+    });
   } catch (error) {
-    console.error("Error fetching vehicles:", error);
     return NextResponse.json(
-      { error: "Failed to fetch vehicles" },
+      { 
+        success: false, 
+        error: "Failed to fetch vehicles",
+        details: error instanceof Error ? error.message : "Unknown error"
+      },
       { status: 500 }
     );
   }

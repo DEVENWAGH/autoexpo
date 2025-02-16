@@ -16,7 +16,34 @@ interface VehicleStore {
   setLoading: (loading: boolean) => void;
   setVehicles: (vehicles: Vehicle[]) => void;
   toggleFavorite: (id: number) => void;
+  vehicleType: 'cars' | 'bikes';
+  mainImages: string[];
+  interiorImages: string[];
+  exteriorImages: string[];
+  colorImages: string[];
+  galleryImages: string[];
+  error: string;
+  
+  setVehicleType: (type: 'cars' | 'bikes') => void;
+  setMainImages: (images: string[]) => void;
+  setInteriorImages: (images: string[]) => void;
+  setExteriorImages: (images: string[]) => void;
+  setColorImages: (images: string[]) => void;
+  setGalleryImages: (images: string[]) => void;
+  setError: (error: string) => void;
+  reset: () => void;
 }
+
+const initialState = {
+  vehicleType: 'cars' as const,
+  mainImages: [],
+  interiorImages: [],
+  exteriorImages: [],
+  colorImages: [],
+  galleryImages: [],
+  loading: false,
+  error: '',
+};
 
 export const useVehicleStore = create<VehicleStore>((set) => ({
   vehicles: [
@@ -49,7 +76,7 @@ export const useVehicleStore = create<VehicleStore>((set) => ({
       isFavorite: false,
     },
   ],
-  loading: false,
+  ...initialState,
   setLoading: (loading) => set({ loading }),
   setVehicles: (vehicles) => set({ vehicles }),
   toggleFavorite: (id) =>
@@ -60,4 +87,12 @@ export const useVehicleStore = create<VehicleStore>((set) => ({
           : vehicle
       ),
     })),
+  setVehicleType: (type) => set({ vehicleType: type }),
+  setMainImages: (images) => set({ mainImages: images }),
+  setInteriorImages: (images) => set({ interiorImages: images }),
+  setExteriorImages: (images) => set({ exteriorImages: images }),
+  setColorImages: (images) => set({ colorImages: images }),
+  setGalleryImages: (images) => set({ galleryImages: images }),
+  setError: (error) => set({ error }),
+  reset: () => set(initialState)
 }));
