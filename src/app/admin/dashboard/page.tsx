@@ -5,6 +5,15 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from "next-auth/react";
 
+interface User {
+  _id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  role: string;
+  createdAt: string;
+}
+
 const popularCars = [
     { name: 'Honda Civic 2023', views: 1234, category: 'Car', trend: '+15%' },
     { name: 'Toyota Camry', views: 956, category: 'Car', trend: '+10%' },
@@ -22,31 +31,12 @@ const stats = [
     { title: 'Total Views', value: '45.2K', icon: Eye, change: '+23%', color: 'green' },
 ];
 
-const recentSignups = [
-    { 
-        name: 'John Doe',
-        email: 'john.doe@example.com',
-        date: '2024-01-15',
-        avatar: '/avatars/placeholder.png'
-    },
-    { 
-        name: 'Sarah Wilson',
-        email: 'sarah.w@example.com',
-        date: '2024-01-14',
-        avatar: '/avatars/placeholder.png'
-    },
-    { 
-        name: 'Michael Brown',
-        email: 'michael.b@example.com',
-        date: '2024-01-14',
-        avatar: '/avatars/placeholder.png'
-    },
-];
-
 const Dashboard = () => {
     const { data: session, status } = useSession();
     const router = useRouter();
     const [showCars, setShowCars] = useState(true);
+    const [recentUsers, setRecentUsers] = useState<User[]>([]);
+    const [loading, setLoading] = useState(true);
     const activeVehicles = showCars ? popularCars : popularBikes;
 
     useEffect(() => {
@@ -59,6 +49,26 @@ const Dashboard = () => {
             router.push("/unauthorized");
         }
     }, [session, status, router]);
+
+    useEffect(() => {
+        const fetchUsers = async () => {
+            try {
+                const response = await fetch('/api/users/recent');
+                const data = await response.json();
+                if (data.users) {
+                    setRecentUsers(data.users);
+                }
+            } catch (error) {
+                console.error('Failed to fetch users:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        if (session?.user?.role === 'admin') {
+            fetchUsers();
+        }
+    }, [session]);
 
     // Don't render anything while checking authentication
     if (status === "loading" || !session) {
@@ -159,41 +169,67 @@ const Dashboard = () => {
                     </div>
                 </div>
 
-                {/* Recent Signups Section */}
+                {/* Recent Users Section */}
                 <div className="mt-8 bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
                     <div className="p-6 border-b border-gray-800">
-                        <h2 className="text-xl font-semibold text-white">Recent Signups</h2>
+                        <h2 className="text-xl font-semibold text-white">Recent Users</h2>
                     </div>
                     <div className="overflow-x-auto">
                         <table className="w-full">
                             <thead className="bg-gray-800/50">
                                 <tr>
                                     <th className="py-3 px-6 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">User</th>
+                                    <th className="py-3 px-6 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Role</th>
                                     <th className="py-3 px-6 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Date</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-800">
-                                {recentSignups.map((user, index) => (
-                                    <tr key={index} className="hover:bg-gray-800/50 transition-colors">
-                                        <td className="py-4 px-6">
-                                            <div className="flex items-center gap-3">
-                                                <div className="h-8 w-8 rounded-full bg-gray-700 flex items-center justify-center text-white text-sm">
-                                                    {user.name.charAt(0)}
-                                                </div>
-                                                <div>
-                                                    <div className="text-sm font-medium text-gray-300">{user.name}</div>
-                                                    <div className="text-xs text-gray-500">{user.email}</div>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td className="py-4 px-6">
-                                            <div className="flex items-center gap-2 text-sm text-gray-400">
-                                                <Calendar className="w-4 h-4" />
-                                                {user.date}
-                                            </div>
+                                {loading ? (
+                                    <tr>
+                                        <td colSpan={3} className="py-4 px-6 text-center text-gray-400">
+                                            Loading users...
                                         </td>
                                     </tr>
-                                ))}
+                                ) : recentUsers.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={3} className="py-4 px-6 text-center text-gray-400">
+                                            No users found
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    recentUsers.map((user) => (
+                                        <tr key={user._id} className="hover:bg-gray-800/50 transition-colors">
+                                            <td className="py-4 px-6">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="h-8 w-8 rounded-full bg-gray-700 flex items-center justify-center text-white text-sm">
+                                                        {user.firstName[0]}
+                                                    </div>
+                                                    <div>
+                                                        <div className="text-sm font-medium text-gray-300">
+                                                            {user.firstName} {user.lastName}
+                                                        </div>
+                                                        <div className="text-xs text-gray-500">{user.email}</div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="py-4 px-6">
+                                                <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                                                    user.role === 'admin' 
+                                                        ? 'bg-purple-500/10 text-purple-500' 
+                                                        : 'bg-blue-500/10 text-blue-500'
+                                                }`}>
+                                                    {user.role}
+                                                </span>
+                                            </td>
+                                            <td className="py-4 px-6">
+                                                <div className="flex items-center gap-2 text-sm text-gray-400">
+                                                    <Calendar className="w-4 h-4" />
+                                                    {new Date(user.createdAt).toLocaleDateString()}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
                             </tbody>
                         </table>
                     </div>
