@@ -1,17 +1,33 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import Image from "next/image";
-import { Input } from "@/components/ui/input";
+import { useEffect, useState } from "react";
+import { PieChart, Pie, Cell } from "recharts";
+import { useLoanStore } from "@/store/loanStore";
+import { nanoid } from "nanoid";
 
 export default function Calculator() {
-  const [loanAmount, setLoanAmount] = useState<number>(50000);
-  const [interestRate, setInterestRate] = useState<number>(8.5);
-  const [loanTerm, setLoanTerm] = useState<number>(36);
-  const [monthlyPayment, setMonthlyPayment] = useState<number>(0);
-  const [totalPayment, setTotalPayment] = useState<number>(0);
-  const [totalInterest, setTotalInterest] = useState<number>(0);
-  const [downPayment, setDownPayment] = useState<number>(10000);
+  const {
+    loanAmount,
+    interestRate,
+    loanTerm,
+    monthlyPayment,
+    totalPayment,
+    totalInterest,
+    downPayment,
+    isYearly,
+    setLoanAmount,
+    setInterestRate,
+    setLoanTerm,
+    setDownPayment,
+    toggleIsYearly,
+    calculateLoan,
+  } = useLoanStore();
+
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   const formatIndianNumber = (num: number) => {
     const formatted = num.toFixed(2);
@@ -28,53 +44,26 @@ export default function Calculator() {
   };
 
   useEffect(() => {
-    const calculateLoan = () => {
-      const principal = loanAmount - downPayment;
-      const monthlyRate = interestRate / 12 / 100;
-      const numberOfPayments = loanTerm;
-
-      const monthlyAmount =
-        (principal *
-          monthlyRate *
-          Math.pow(1 + monthlyRate, numberOfPayments)) /
-        (Math.pow(1 + monthlyRate, numberOfPayments) - 1);
-
-      const totalAmount = monthlyAmount * numberOfPayments;
-      const interestAmount = totalAmount - principal;
-
-      setMonthlyPayment(monthlyAmount);
-      setTotalPayment(totalAmount + downPayment);
-      setTotalInterest(interestAmount);
-    };
-
     calculateLoan();
-  }, [loanAmount, interestRate, loanTerm, downPayment]);
+  }, [loanAmount, interestRate, loanTerm, downPayment, calculateLoan]);
+
+  const pieData = [
+    { name: "Principal", value: loanAmount - downPayment, id: nanoid() },
+    { name: "Interest", value: totalInterest, id: nanoid() },
+  ];
+
+  const COLORS = ["#0088FE", "#FF8042"];
 
   return (
-    <div className="min-h-screen w-full relative">
-      <Image
-        src="/loan.svg"
-        alt="Background"
-        fill
-        priority
-        sizes="100vw"
-        style={{
-          objectFit: "cover",
-          objectPosition: "center",
-          width: "100%",
-          height: "100%",
-        }}
-        className="absolute inset-0"
-      />
-
-      <div className="relative z-10 w-1/2 min-h-screen flex items-center">
-        <div className="w-full ml-4">
-          <h1 className="text-3xl font-bold text-black mb-6 text-center">
+    <div className="min-h-screen w-full relative bg-gray-900 overflow-hidden">
+      <div className="relative z-10 w-full min-h-screen flex items-center justify-center">
+        <div className="w-3/4 bg-slate-900 bg-opacity-80 p-8 rounded-lg">
+          <h1 className="text-3xl font-bold text-white mb-6 text-center">
             Auto Loan Calculator
           </h1>
 
           <div className="grid grid-cols-2 gap-4">
-            {/* Loan Details - more compact */}
+            {/* Loan Details */}
             <div className="bg-slate-900 p-4 rounded-lg border border-slate-700 shadow-xl">
               <h2 className="text-xl font-semibold text-white mb-4">
                 Loan Details
@@ -87,12 +76,12 @@ export default function Calculator() {
                   >
                     Loan Amount (₹)
                   </label>
-                  <Input
+                  <input
                     id="loanAmount"
                     type="number"
                     value={loanAmount}
                     onChange={(e) => setLoanAmount(Number(e.target.value))}
-                    className="bg-gray-700 text-white"
+                    className="bg-gray-700 text-white w-full p-2 rounded"
                   />
                   <input
                     type="range"
@@ -112,12 +101,12 @@ export default function Calculator() {
                   >
                     Down Payment (₹)
                   </label>
-                  <Input
+                  <input
                     id="downPayment"
                     type="number"
                     value={downPayment}
                     onChange={(e) => setDownPayment(Number(e.target.value))}
-                    className="bg-gray-700 text-white"
+                    className="bg-gray-700 text-white w-full p-2 rounded"
                   />
                   <input
                     type="range"
@@ -137,12 +126,12 @@ export default function Calculator() {
                   >
                     Interest Rate (%)
                   </label>
-                  <Input
+                  <input
                     id="interestRate"
                     type="number"
                     value={interestRate}
                     onChange={(e) => setInterestRate(Number(e.target.value))}
-                    className="bg-gray-700 text-white"
+                    className="bg-gray-700 text-white w-full p-2 rounded"
                     step="0.1"
                   />
                   <input
@@ -160,30 +149,50 @@ export default function Calculator() {
                     htmlFor="loanTerm"
                     className="block text-sm font-medium text-gray-300 mb-2"
                   >
-                    Loan Term (months)
+                    Loan Term ({isYearly ? "years" : "months"})
                   </label>
-                  <Input
+                  <input
                     id="loanTerm"
                     type="number"
-                    value={loanTerm}
-                    onChange={(e) => setLoanTerm(Number(e.target.value))}
-                    className="bg-gray-700 text-white"
+                    value={isYearly ? loanTerm / 12 : loanTerm}
+                    onChange={(e) =>
+                      setLoanTerm(
+                        isYearly
+                          ? Number(e.target.value) * 12
+                          : Number(e.target.value)
+                      )
+                    }
+                    className="bg-gray-700 text-white w-full p-2 rounded"
                   />
                   <input
                     type="range"
-                    min="12"
-                    max="84"
-                    step="12"
-                    value={loanTerm}
-                    onChange={(e) => setLoanTerm(Number(e.target.value))}
+                    min={isYearly ? "1" : "12"}
+                    max={isYearly ? "7" : "84"}
+                    step={isYearly ? "1" : "12"}
+                    value={isYearly ? loanTerm / 12 : loanTerm}
+                    onChange={(e) =>
+                      setLoanTerm(
+                        isYearly
+                          ? Number(e.target.value) * 12
+                          : Number(e.target.value)
+                      )
+                    }
                     className="w-full mt-2"
                   />
+                  <div className="flex justify-end mt-2">
+                    <button
+                      onClick={() => toggleIsYearly()}
+                      className="bg-purple-500 text-white px-4 py-2 rounded"
+                    >
+                      {isYearly ? "Switch to Months" : "Switch to Years"}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Loan Summary - more compact */}
-            <div className="bg-slate-900 p-4 rounded-lg border border-slate-700 shadow-xl">
+            {/* Loan Summary */}
+            <div className="bg-slate-900 p-4 rounded-lg border border-slate-700 shadow-xl relative">
               <h2 className="text-xl font-semibold text-white mb-4">
                 Loan Summary
               </h2>
@@ -257,6 +266,56 @@ export default function Calculator() {
                       </p>
                     </div>
                   </div>
+                </div>
+
+                {isClient && (
+                  <div className="absolute top-8 right-[8rem]">
+                    <PieChart width={200} height={200}>
+                      <Pie
+                        data={pieData}
+                        cx={100}
+                        cy={100}
+                        innerRadius={60}
+                        outerRadius={80}
+                        fill="#8884d8"
+                        paddingAngle={5}
+                        dataKey="value"
+                      >
+                        {pieData.map((entry) => (
+                          <Cell
+                            key={entry.id}
+                            fill={entry.name === "Principal" ? COLORS[0] : COLORS[1]}
+                          />
+                        ))}
+                      </Pie>
+                    </PieChart>
+                    <div className="absolute inset-0 top-21 right-[-.5rem] text-center text-purple-500">
+                      <div className="text-sm">Principal</div>
+                      <div className="font-semibold">
+                        {totalPayment === 0
+                          ? "0%"
+                          : (
+                              ((loanAmount - downPayment) / totalPayment) *
+                              100
+                            ).toFixed(1)}
+                        %
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex justify-center gap-4">
+                  {pieData.map((entry) => (
+                    <div key={entry.id} className="flex items-center gap-2">
+                      <div
+                        className="w-3 h-3 rounded-full"
+                        style={{
+                          backgroundColor: entry.name === "Principal" ? COLORS[0] : COLORS[1]
+                        }}
+                      />
+                      <span className="text-sm text-white">{entry.name}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
