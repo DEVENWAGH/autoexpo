@@ -1,8 +1,12 @@
 @import "tailwindcss";
 
+@plugin "tailwindcss-animate";
+
+@custom-variant dark (&:is(.dark *));
+
 /* Remove any existing background colors and ensure full coverage */
-html, body {
-  background-color: #000000;
+html,
+body {
   min-height: 100vh;
   width: 100%;
   margin: 0;
@@ -11,76 +15,195 @@ html, body {
 }
 
 body {
-  font-family: Arial, Helvetica, sans-serif;
-  background-color: #030712;
   min-height: 100vh;
   margin: 0;
   padding: 0;
 }
 
+/* Fix for theme transitions */
+:root {
+  color-scheme: light dark;
+}
+
+/* Dark mode overrides */
+.dark {
+  background-color: #000;
+}
+
+.dark body {
+  background-color: #000;
+}
+
+/* Light mode overrides */
+:root:not(.dark) {
+  background-color: #fff;
+}
+
+:root:not(.dark) body {
+  background-color: #fff;
+}
+
+/* Rest of your CSS variables */
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 240 10% 3.9%;
+    /* Base colors for light mode */
+    --background: 0 100% 50%; /* Red in HSL format */
+    --foreground: 222.2 84% 4.9%;
+
+    /* Card colors */
     --card: 0 0% 100%;
-    --card-foreground: 240 10% 3.9%;
+    --card-foreground: 222.2 84% 4.9%;
+
+    /* Popover colors */
     --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 3.9%;
-    --primary: 240 5.9% 10%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 240 4.8% 95.9%;
-    --secondary-foreground: 240 5.9% 10%;
-    --muted: 240 4.8% 95.9%;
-    --muted-foreground: 240 3.8% 46.1%;
-    --accent: 240 4.8% 95.9%;
-    --accent-foreground: 240 5.9% 10%;
+    --popover-foreground: 222.2 84% 4.9%;
+
+    /* Primary colors */
+    --primary: 262 83.3% 57.8%;
+    --primary-foreground: 210 40% 98%;
+
+    /* Secondary colors */
+    --secondary: 260 4.8% 95.9%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+
+    /* Muted colors */
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+
+    /* Accent colors */
+    --accent: 262 83.3% 94%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+
+    /* Destructive colors */
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 240 5.9% 90%;
-    --input: 240 5.9% 90%;
-    --ring: 240 10% 3.9%;
-    --chart-1: 12 76% 61%;
-    --chart-2: 173 58% 39%;
-    --chart-3: 197 37% 24%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
+    --destructive-foreground: 210 40% 98%;
+
+    /* Success colors */
+    --success: 142 76% 36%;
+    --success-foreground: 210 40% 98%;
+
+    /* Warning colors */
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 12%;
+
+    /* Info colors */
+    --info: 214 100% 58%;
+    --info-foreground: 210 40% 98%;
+
+    /* Border, input and ring colors */
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 262 83.3% 57.8%;
+
+    /* Chart colors */
+    --chart-1: 262 83.3% 57.8%;
+    --chart-2: 214 100% 58%;
+    --chart-3: 38 92% 50%;
+    --chart-4: 142 76% 36%;
+    --chart-5: 0 84.2% 60.2%;
+
     --radius: 0.5rem;
   }
+
   .dark {
-    --background: 240 10% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 240 10% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 240 10% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 240 5.9% 10%;
-    --secondary: 240 3.7% 15.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 240 3.7% 15.9%;
-    --muted-foreground: 240 5% 64.9%;
-    --accent: 240 3.7% 15.9%;
-    --accent-foreground: 0 0% 98%;
+    /* Base colors for dark mode */
+    --background: 0 0% 0%; /* Pure black background */
+    --foreground: 0 0% 100%; /* Pure white text */
+
+    /* Card colors */
+    --card: 0 0% 12%; /* Slightly lighter dark gray for cards */
+    --card-foreground: 0 0% 100%;
+
+    /* Popover colors */
+    --popover: 0 0% 12%; /* Match card background */
+    --popover-foreground: 0 0% 100%;
+
+    /* Ring and border colors */
+    --border: 0 0% 20%; /* Darker gray for borders */
+    --input: 0 0% 20%;
+    --ring: 263 70% 71%;
+
+    /* Keep your existing color definitions for other elements */
+    --primary: 263 70% 71%;
+    --primary-foreground: 222.2 47.4% 1.2%;
+
+    /* Secondary colors */
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+
+    /* Muted colors */
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+
+    /* Accent colors */
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+
+    /* Destructive colors */
     --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
-    --ring: 240 4.9% 83.9%;
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
+    --destructive-foreground: 210 40% 98%;
+
+    /* Success colors */
+    --success: 142 76% 46%;
+    --success-foreground: 210 40% 98%;
+
+    /* Warning colors */
+    --warning: 38 92% 60%;
+    --warning-foreground: 0 0% 12%;
+
+    /* Info colors */
+    --info: 214 100% 68%;
+    --info-foreground: 210 40% 98%;
+
+    /* Border, input and ring colors */
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 263 70% 71%;
+
+    /* Chart colors */
+    --chart-1: 263 70% 71%;
+    --chart-2: 214 100% 68%;
+    --chart-3: 38 92% 60%;
+    --chart-4: 142 76% 46%;
+    --chart-5: 0 62.8% 50.6%;
   }
 }
 
+/* Convert HSL color variables to color values */
 @layer base {
   * {
     border-color: hsl(var(--border));
-    box-sizing: border-box;
   }
   body {
     background-color: hsl(var(--background));
     color: hsl(var(--foreground));
+    transition-property: color, background-color;
+    transition-duration: 300ms;
+    transition-timing-function: ease;
   }
+}
+
+/* Custom color classes - can be used with text-*, bg-*, border-* prefixes */
+.text-success {
+  color: hsl(var(--success));
+}
+
+.text-warning {
+  color: hsl(var(--warning));
+}
+
+.text-info {
+  color: hsl(var(--info));
+}
+
+.bg-success {
+  background-color: hsl(var(--success));
+}
+
+.bg-warning {
+  background-color: hsl(var(--warning));
+}
+
+.bg-info {
+  background-color: hsl(var(--info));
 }

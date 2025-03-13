@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import Image from "next/image";
+import { useTheme } from "next-themes";
 
 interface Props {
   readonly logos: readonly string[];
@@ -13,6 +14,19 @@ export default function LogoCarousel({ logos }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [startX, setStartX] = useState(0);
+  const { theme, resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  // Ensure component is mounted to avoid hydration issues
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Add theme-aware styling
+  const logoBackgroundColor =
+    mounted && (theme === "dark" || resolvedTheme === "dark")
+      ? "bg-white" // White logos in dark mode
+      : "bg-zinc-100"; // Zinc logos in light mode
 
   const handleDragStart = (e: React.MouseEvent | React.TouchEvent) => {
     setIsDragging(true);
@@ -68,7 +82,6 @@ export default function LogoCarousel({ logos }: Props) {
     return 0.5;
   };
 
-
   // Add auto-scroll animation
   useEffect(() => {
     const interval = setInterval(() => {
@@ -78,9 +91,8 @@ export default function LogoCarousel({ logos }: Props) {
     return () => clearInterval(interval);
   }, [logos.length]);
 
-
   return (
-    <section 
+    <section
       ref={containerRef}
       aria-label="Logo carousel"
       className="relative h-56 overflow-hidden my-10 touch-none select-none cursor-grab active:cursor-grabbing"
@@ -92,9 +104,9 @@ export default function LogoCarousel({ logos }: Props) {
       onTouchMove={handleDragMove}
       onTouchEnd={handleDragEnd}
       onKeyDown={(e) => {
-        if (e.key === 'ArrowLeft') {
+        if (e.key === "ArrowLeft") {
           setActiveIndex((prev) => (prev - 1 + logos.length) % logos.length);
-        } else if (e.key === 'ArrowRight') {
+        } else if (e.key === "ArrowRight") {
           setActiveIndex((prev) => (prev + 1) % logos.length);
         }
       }}
@@ -105,20 +117,24 @@ export default function LogoCarousel({ logos }: Props) {
             key={`${logo}-${index}`}
             className="absolute transition-all duration-500 ease-out"
             style={{
-              transform: `translateX(-50%) scale(${getScale(index % logos.length)})`,
+              transform: `translateX(-50%) scale(${getScale(
+                index % logos.length
+              )})`,
               left: `${50 + (index - activeIndex) * 12.5}%`, // Fixed equal spacing of 12.5%
               opacity: getOpacity(index % logos.length),
-              zIndex: 1000 - Math.abs(index % logos.length - activeIndex)
+              zIndex: 1000 - Math.abs((index % logos.length) - activeIndex),
             }}
             aria-label={`Brand logo ${index + 1}`}
             onClick={() => setActiveIndex(index % logos.length)}
           >
-            <div className="w-48 h-48 flex items-center justify-center bg-white rounded-lg shadow-lg mx-4">
+            <div
+              className={`w-48 h-48 flex items-center justify-center ${logoBackgroundColor} rounded-lg shadow-lg mx-4`}
+            >
               <Image
                 src={logo}
                 alt={`Brand logo ${index + 1}`}
-                width={logo.includes('kawasaki') ? 150 : 120}
-                height={logo.includes('kawasaki') ? 150 : 120}
+                width={logo.includes("kawasaki") ? 150 : 120}
+                height={logo.includes("kawasaki") ? 150 : 120}
                 className="object-contain p-3"
                 draggable={false}
               />

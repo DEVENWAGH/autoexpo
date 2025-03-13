@@ -4,6 +4,8 @@ import "./globals.css";
 import "@radix-ui/themes/styles.css";
 import { Theme } from "@radix-ui/themes";
 import { SessionProvider } from "next-auth/react";
+import { ThemeProvider } from "@/components/theme/theme-provider";
+import { ThemeToggle } from "@/components/theme/theme-toggle";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -31,13 +33,21 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={bodyClasses} suppressHydrationWarning>
-        <SessionProvider>
-          <Theme>
-            <div className="flex items-center justify-center min-h-screen">
-              {children}
-            </div>
-          </Theme>
-        </SessionProvider>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <SessionProvider>
+            <Theme>
+              <div className="flex items-center justify-center min-h-screen">
+                {children}
+              </div>
+              <ThemeToggle />
+            </Theme>
+          </SessionProvider>
+        </ThemeProvider>
       </body>
     </html>
   );
