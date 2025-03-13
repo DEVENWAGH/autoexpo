@@ -9,6 +9,7 @@ export const config = {
 
 export async function POST(request: Request) {
   try {
+    console.log('Verifying ImageKit config...');
     if (!imageKit) {
       console.error('ImageKit not initialized');
       return NextResponse.json({
@@ -18,11 +19,11 @@ export async function POST(request: Request) {
       }, { status: 500 });
     }
 
-    console.log('Verifying ImageKit config...');
     verifyImageKitConfig();
 
     const formData = await request.formData();
     const file = formData.get("file") as File;
+    const folder = formData.get("folder") as string || "/vehicles";
 
     if (!file) {
       console.error('No file provided');
@@ -35,24 +36,19 @@ export async function POST(request: Request) {
     console.log('Processing file:', {
       name: file.name,
       type: file.type,
-      size: file.size
+      size: file.size,
+      folder: folder
     });
 
     const buffer = Buffer.from(await file.arrayBuffer());
     const base64 = buffer.toString("base64");
-
-    console.log('Attempting upload with config:', {
-      publicKey: process.env.NEXT_PUBLIC_PUBLIC_KEY,
-      hasPrivateKey: !!process.env.PRIVATE_KEY,
-      urlEndpoint: process.env.NEXT_PUBLIC_URL_ENDPOINT
-    });
 
     try {
       console.log('Attempting ImageKit upload...');
       const upload = await imageKit.upload({
         file: base64,
         fileName: file.name,
-        folder: "/vehicles",
+        folder: folder,
         useUniqueFileName: true,
       });
 

@@ -12,7 +12,7 @@ const brunoFont = Bruno_Ace({
 });
 
 export default function GlassContainer() {
-  const { vehicles, toggleFavorite } = useVehicleStore();
+  const { vehicles = [], toggleFavorite } = useVehicleStore();
   const { theme, resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
@@ -49,13 +49,19 @@ export default function GlassContainer() {
       >
         <div className="h-full p-8">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {vehicles.map((vehicle) => (
-              <Card
-                key={vehicle.id}
-                {...vehicle}
-                onFavoriteClick={toggleFavorite}
-              />
-            ))}
+            {vehicles && vehicles.length > 0 ? (
+              vehicles.map((vehicle) => (
+                <Card
+                  key={vehicle.id}
+                  {...vehicle}
+                  onFavoriteClick={toggleFavorite}
+                />
+              ))
+            ) : (
+              <div className="col-span-full text-center py-8 text-gray-500">
+                No vehicles available at the moment.
+              </div>
+            )}
           </div>
           <button
             className={`mt-6 font-medium ${viewAllClass} transition duration-200 flex items-center`}
