@@ -50,3 +50,41 @@ export interface Bike extends BaseVehicle {
 }
 
 export type Vehicle = Car | Bike;
+
+// Add more specific interfaces for form validation
+export interface BasicVehicleInfo {
+  brand: string;
+  name: string;
+  priceExshowroom: string;
+  priceOnroad: string;
+  variant?: string;
+  launchYear?: string;
+  pros?: string;
+  cons?: string;
+}
+
+export interface EngineTransmissionInfo {
+  engineType: string;
+  displacement: string | number;
+  maxPower: string;
+  maxTorque: string;
+  cylinders?: string | number;
+  transmission?: string;
+  // Add other engine fields
+}
+
+export interface DimensionsInfo {
+  length: string | number;
+  width: string | number;
+  height: string | number;
+  wheelbase?: string | number;
+  groundClearance?: string | number;
+  seatingCapacity?: string | number;
+}
+
+export interface FormState {
+  basicInfo?: BasicVehicleInfo;
+  engineTransmission?: EngineTransmissionInfo;
+  dimensions?: DimensionsInfo;
+  [key: string]: any;
+}

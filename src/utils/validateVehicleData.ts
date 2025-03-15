@@ -9,11 +9,36 @@ export function validateVehicleData(formData: FormData, vehicleType: 'cars' | 'b
       errors[field] = `${field} is required`;
     }
   });
+  
+  // Check for specially formatted fields (like from the fixed form state)
+  if (!formData.get('name') && formData.get('basicInfo.name')) {
+    const value = formData.get('basicInfo.name')?.toString().trim();
+    if (!value) {
+      errors['name'] = 'Name is required';
+    }
+  }
+  
+  if (!formData.get('brand') && formData.get('basicInfo.brand')) {
+    const value = formData.get('basicInfo.brand')?.toString().trim();
+    if (!value) {
+      errors['brand'] = 'Brand is required';
+    }
+  }
 
   // Validate main image
   const mainImages = formData.getAll('mainImages');
   if (mainImages.length === 0) {
     errors.mainImages = 'At least one main image is required';
+  }
+  
+  // Validate price relationship if both are provided
+  const priceExshowroom = formData.get('priceExshowroom') || formData.get('basicInfo.priceExshowroom');
+  const priceOnroad = formData.get('priceOnroad') || formData.get('basicInfo.priceOnroad');
+  
+  if (priceExshowroom && priceOnroad) {
+    if (Number(priceExshowroom) >= Number(priceOnroad)) {
+      errors.priceExshowroom = 'Ex-showroom price must be lower than On-road price';
+    }
   }
 
   return {

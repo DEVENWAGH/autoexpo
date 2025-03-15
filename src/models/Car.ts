@@ -7,8 +7,10 @@ export interface ICar extends Document {
   launchYear: number;
   price: {
     onroad: number;
-    offroad: number;
+    exshowroom: number;
   };
+  pros: string[];
+  cons: string[];
   specs: {
     engineType: string;
     displacement: number;
@@ -95,8 +97,10 @@ const CarSchema = new Schema({
   launchYear: { type: Number, required: true },
   price: {
     onroad: { type: Number, required: true },
-    offroad: { type: Number, required: true }
+    exshowroom: { type: Number, required: true }
   },
+  pros: [{ type: String }],
+  cons: [{ type: String }],
   specs: {
     engineType: { type: String, required: true },
     displacement: { type: Number, required: true },

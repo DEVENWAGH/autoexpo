@@ -28,6 +28,7 @@ body {
 /* Dark mode overrides */
 .dark {
   background-color: #000;
+  color-scheme: dark;
 }
 
 .dark body {
@@ -37,6 +38,7 @@ body {
 /* Light mode overrides */
 :root:not(.dark) {
   background-color: #fff;
+  color-scheme: light;
 }
 
 :root:not(.dark) body {
@@ -47,7 +49,7 @@ body {
 @layer base {
   :root {
     /* Base colors for light mode */
-    --background: 0 100% 50%; /* Red in HSL format */
+    --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
 
     /* Card colors */
@@ -118,33 +120,28 @@ body {
     --popover: 0 0% 12%; /* Match card background */
     --popover-foreground: 0 0% 100%;
 
-    /* Ring and border colors */
-    --border: 0 0% 20%; /* Darker gray for borders */
-    --input: 0 0% 20%;
-    --ring: 263 70% 71%;
-
-    /* Keep your existing color definitions for other elements */
+    /* Primary colors - enhanced visibility */
     --primary: 263 70% 71%;
-    --primary-foreground: 222.2 47.4% 1.2%;
+    --primary-foreground: 0 0% 100%; /* White text on primary buttons */
 
     /* Secondary colors */
-    --secondary: 217.2 32.6% 17.5%;
+    --secondary: 217.2 32.6% 25%; /* Enhanced for better visibility */
     --secondary-foreground: 210 40% 98%;
 
     /* Muted colors */
     --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted-foreground: 215 20.2% 75%; /* Lighter for better visibility */
 
     /* Accent colors */
-    --accent: 217.2 32.6% 17.5%;
+    --accent: 217.2 32.6% 25%; /* Enhanced for better visibility */
     --accent-foreground: 210 40% 98%;
 
     /* Destructive colors */
-    --destructive: 0 62.8% 30.6%;
+    --destructive: 0 62.8% 50.6%; /* Brighter for visibility */
     --destructive-foreground: 210 40% 98%;
 
     /* Success colors */
-    --success: 142 76% 46%;
+    --success: 142 76% 56%; /* Brighter for visibility */
     --success-foreground: 210 40% 98%;
 
     /* Warning colors */
@@ -156,15 +153,15 @@ body {
     --info-foreground: 210 40% 98%;
 
     /* Border, input and ring colors */
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
+    --border: 217.2 32.6% 25%; /* Brighter for better visibility */
+    --input: 217.2 32.6% 25%;
     --ring: 263 70% 71%;
 
     /* Chart colors */
     --chart-1: 263 70% 71%;
     --chart-2: 214 100% 68%;
     --chart-3: 38 92% 60%;
-    --chart-4: 142 76% 46%;
+    --chart-4: 142 76% 56%;
     --chart-5: 0 62.8% 50.6%;
   }
 }
@@ -206,4 +203,48 @@ body {
 
 .bg-info {
   background-color: hsl(var(--info));
+}
+
+/* Add these classes for form elements in dark mode */
+.dark .bg-gray-800 {
+  background-color: #1f2937;
+}
+
+.dark .border-gray-700 {
+  border-color: #374151;
+}
+
+.dark .bg-gray-900 {
+  background-color: #111827;
+}
+
+.dark .bg-blue-600 {
+  background-color: #2563eb;
+}
+
+.dark .hover\:bg-blue-700:hover {
+  background-color: #1d4ed8;
+}
+
+/* Tabs styling for dark mode */
+.dark [data-state="active"][data-slot="tab"] {
+  background-color: #2563eb;
+  color: white;
+}
+
+/* Add dark mode styles for form elements */
+.dark select {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  border-color: hsl(var(--input));
+}
+
+.dark select:hover {
+  background-color: hsl(var(--accent));
+  color: hsl(var(--accent-foreground));
+}
+
+.dark select option {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
 }

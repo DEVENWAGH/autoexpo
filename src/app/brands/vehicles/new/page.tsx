@@ -8,7 +8,6 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { vehicleService } from "@/services/vehicleService";
 import {
   validateVehicleData,
-  isSectionValid,
   getSectionCompletionStatus,
 } from "@/utils/validateVehicleData";
 import { toast } from "react-hot-toast";
@@ -19,6 +18,8 @@ import {
 } from "@/components/ui/form-components";
 import { useAuthCheck } from "@/lib/authCheck";
 import { useTheme } from "next-themes";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const CAR_FUEL_TYPES = [
   "Petrol",
@@ -225,7 +226,6 @@ export default function NewVehicle() {
     exteriorImages,
     colorImages,
     galleryImages,
-    loading,
     error,
     setVehicleType,
     setMainImages,
@@ -233,18 +233,41 @@ export default function NewVehicle() {
     setExteriorImages,
     setColorImages,
     setGalleryImages,
-    setLoading,
     setError,
     reset,
   } = useVehicleStore();
+
+  const [exshowroomPrice, setExshowroomPrice] = useState<string>("");
+  const [onroadPrice, setOnroadPrice] = useState<string>("");
+  const [priceError, setPriceError] = useState<string>("");
 
   // Prevent hydration mismatch
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  // Theme-aware styles
-  const isDark = mounted && (theme === "dark" || resolvedTheme === "dark");
+  // Define default data for cars and bikes
+  const defaultCarData = {
+    name: "New Model",
+    brand: "Toyota",
+    variant: "Base",
+    launchYear: new Date().getFullYear().toString(),
+    priceOnroad: "1000000",
+    priceExshowroom: "850000",
+    pros: "Spacious Interior\nFuel Efficient\nAdvanced Safety Features\nComfortable Ride",
+    cons: "Average Performance\nBasic Infotainment System\nLimited Color Options",
+  };
+
+  const defaultBikeData = {
+    name: "Street Fighter",
+    brand: "Honda",
+    variant: "Base",
+    launchYear: new Date().getFullYear().toString(),
+    priceOnroad: "150000",
+    priceExshowroom: "120000",
+    pros: "Excellent Mileage\nEasy Handling\nAffordable Maintenance\nSporty Look",
+    cons: "Limited Power\nBasic Features\nAverage Build Quality",
+  };
 
   const activeSections = vehicleType === "cars" ? SPEC_SECTIONS : BIKE_SECTIONS;
 
@@ -283,6 +306,9 @@ Trip Meter (2 Nos.), Door Open, Key in Reminder`;
   const [formInitialized, setFormInitialized] = useState(false);
   const prevSectionRef = useRef(activeSection);
 
+  // Add state for preview mode
+  const [previewMode, setPreviewMode] = useState(false);
+
   // Update section completion status when form data changes
   useEffect(() => {
     const status = getSectionCompletionStatus(formState, vehicleType);
@@ -308,12 +334,6 @@ Trip Meter (2 Nos.), Door Open, Key in Reminder`;
         [section]: newSectionData,
       };
     });
-
-    // Special handling for images section
-    if (section === "images") {
-      // The image data is handled separately in the MultipleImageUpload component
-      // but we should make sure it's reflected in the form state
-    }
   }, []);
 
   // Fix duplicate handleNextSection definitions by consolidating into one
@@ -323,19 +343,48 @@ Trip Meter (2 Nos.), Door Open, Key in Reminder`;
 
     // Validate current section
     if (activeSection === "basicInfo") {
-      if (!currentSectionData.name || !currentSectionData.brand) {
-        toast.error("Please fill in required fields: Name and Brand");
+      // Check if the required fields are filled
+      const { name, brand } = currentSectionData;
+      const errors: Record<string, string> = {};
+
+      if (!name) {
+        errors.name = "Name is required";
+      }
+
+      if (!brand) {
+        errors.brand = "Brand is required";
+      }
+
+      // If there are errors, show them and stop
+      if (Object.keys(errors).length > 0) {
+        toast.error("Please fill in all required fields");
         setSectionErrors((prev) => ({
           ...prev,
-          [activeSection]: {
-            ...(prev[activeSection] || {}),
-            ...(!currentSectionData.name ? { name: "Name is required" } : {}),
-            ...(!currentSectionData.brand
-              ? { brand: "Brand is required" }
-              : {}),
-          },
+          [activeSection]: errors,
         }));
         return;
+      }
+
+      // Validate prices if both are provided
+      if (
+        currentSectionData.priceOnroad &&
+        currentSectionData.priceExshowroom
+      ) {
+        if (
+          Number(currentSectionData.priceExshowroom) >=
+          Number(currentSectionData.priceOnroad)
+        ) {
+          toast.error("Ex-showroom price must be lower than On-road price");
+          setSectionErrors((prev) => ({
+            ...prev,
+            [activeSection]: {
+              ...(prev[activeSection] || {}),
+              priceExshowroom:
+                "Ex-showroom price must be lower than On-road price",
+            },
+          }));
+          return;
+        }
       }
     }
 
@@ -398,7 +447,6 @@ Trip Meter (2 Nos.), Door Open, Key in Reminder`;
     exteriorImages,
     galleryImages,
     vehicleType,
-    saveSectionData,
     setSectionErrors,
     setSectionCompletionStatus,
   ]);
@@ -412,7 +460,7 @@ Trip Meter (2 Nos.), Door Open, Key in Reminder`;
     }
   };
 
-  // Fix the renderBasicInfo function to ensure it uses the persisted form state
+  // Fix the renderBasicInfo function to ensure it uses the persisted form state and includes pros & cons
   const renderBasicInfo = () => {
     // Get the stored values from form state
     const basicInfo = formState.basicInfo || {};
@@ -420,18 +468,22 @@ Trip Meter (2 Nos.), Door Open, Key in Reminder`;
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
-          <label className="block text-sm font-medium text-gray-300">
-            Brand Name <span className="text-red-500">*</span>
+          <label
+            className="block text-sm font-medium text-foreground"
+            htmlFor="brand"
+          >
+            Brand Name <span className="text-destructive">*</span>
           </label>
           <select
+            id="brand"
             name="brand"
-            defaultValue={basicInfo.brand || ""}
+            value={basicInfo.brand || ""}
             onChange={(e) =>
               saveSectionData("basicInfo", { brand: e.target.value })
             }
-            className={`mt-1 block w-full rounded bg-gray-800 border ${
-              hasError("brand") ? "border-red-500" : "border-gray-700"
-            } text-white px-3 py-2`}
+            className={`mt-1 block w-full rounded bg-background border ${
+              hasError("brand") ? "border-destructive" : "border-input"
+            } text-foreground px-3 py-2`}
           >
             <option value="">Select Brand</option>
             {(vehicleType === "cars" ? CAR_BRANDS : BIKE_BRANDS).map(
@@ -443,44 +495,52 @@ Trip Meter (2 Nos.), Door Open, Key in Reminder`;
             )}
           </select>
           {hasError("brand") && (
-            <p className="text-red-500 text-sm mt-1">
+            <p className="text-destructive text-sm mt-1">
               {getErrorMessage("brand")}
             </p>
           )}
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-300">
-            Model Name <span className="text-red-500">*</span>
+          <label
+            className="block text-sm font-medium text-foreground"
+            htmlFor="name"
+          >
+            Model Name <span className="text-destructive">*</span>
           </label>
           <input
+            id="name"
             type="text"
             name="name"
-            defaultValue={basicInfo.name || ""}
+            value={basicInfo.name || ""}
             onChange={(e) =>
               saveSectionData("basicInfo", { name: e.target.value })
             }
             placeholder="e.g. Camry, Civic"
-            className={`mt-1 block w-full rounded bg-gray-800 border ${
-              hasError("name") ? "border-red-500" : "border-gray-700"
-            } text-white px-3 py-2`}
+            className={`mt-1 block w-full rounded bg-background border ${
+              hasError("name") ? "border-destructive" : "border-input"
+            } text-foreground px-3 py-2`}
           />
           {hasError("name") && (
-            <p className="text-red-500 text-sm mt-1">
+            <p className="text-destructive text-sm mt-1">
               {getErrorMessage("name")}
             </p>
           )}
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-300">
+          <label
+            className="block text-sm font-medium text-foreground"
+            htmlFor="variant"
+          >
             Variant
           </label>
           <select
+            id="variant"
             name="variant"
-            defaultValue={basicInfo.variant || "Base"}
+            value={basicInfo.variant || "Base"}
             onChange={(e) =>
               saveSectionData("basicInfo", { variant: e.target.value })
             }
-            className="mt-1 block w-full rounded bg-gray-800 border-gray-700 text-white px-3 py-2"
+            className="mt-1 block w-full rounded bg-background border-input text-foreground px-3 py-2"
           >
             {VARIANT_TYPES.map((type) => (
               <option key={type} value={type}>
@@ -490,48 +550,137 @@ Trip Meter (2 Nos.), Door Open, Key in Reminder`;
           </select>
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-300">
+          <label
+            className="block text-sm font-medium text-foreground"
+            htmlFor="launchYear"
+          >
             Launch Year
           </label>
           <input
+            id="launchYear"
             type="number"
             name="launchYear"
-            defaultValue={basicInfo.launchYear || new Date().getFullYear()}
+            value={basicInfo.launchYear || new Date().getFullYear()}
             onChange={(e) =>
               saveSectionData("basicInfo", { launchYear: e.target.value })
             }
             min="1900"
             max={new Date().getFullYear() + 1}
-            className="mt-1 block w-full rounded bg-gray-800 border-gray-700 text-white px-3 py-2"
+            className="mt-1 block w-full rounded bg-background border-input text-foreground px-3 py-2"
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-300">
+          <label
+            className="block text-sm font-medium text-foreground"
+            htmlFor="priceOnroad"
+          >
             On-Road Price (₹)
           </label>
           <input
+            id="priceOnroad"
             type="number"
             name="priceOnroad"
-            defaultValue={basicInfo.priceOnroad || ""}
-            onChange={(e) =>
-              saveSectionData("basicInfo", { priceOnroad: e.target.value })
-            }
-            className="mt-1 block w-full rounded bg-gray-800 border-gray-700 text-white px-3 py-2"
+            value={basicInfo.priceOnroad || onroadPrice}
+            onChange={(e) => {
+              const value = e.target.value;
+              setOnroadPrice(value);
+              saveSectionData("basicInfo", { priceOnroad: value });
+              // Run validation if both prices are entered
+              if (value && exshowroomPrice) {
+                if (Number(exshowroomPrice) >= Number(value)) {
+                  setPriceError(
+                    "Ex-showroom price must be lower than On-road price"
+                  );
+                } else {
+                  setPriceError("");
+                }
+              }
+            }}
+            className="mt-1 block w-full rounded bg-background border-input text-foreground px-3 py-2"
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-300">
-            Off-Road Price (₹)
+          <label
+            className="block text-sm font-medium text-foreground"
+            htmlFor="priceExshowroom"
+          >
+            Ex-Showroom Price (₹)
           </label>
           <input
+            id="priceExshowroom"
             type="number"
-            name="priceOffroad"
-            defaultValue={basicInfo.priceOffroad || ""}
-            onChange={(e) =>
-              saveSectionData("basicInfo", { priceOffroad: e.target.value })
-            }
-            className="mt-1 block w-full rounded bg-gray-800 border-gray-700 text-white px-3 py-2"
+            name="priceExshowroom"
+            value={basicInfo.priceExshowroom || exshowroomPrice}
+            onChange={(e) => {
+              const value = e.target.value;
+              setExshowroomPrice(value);
+              saveSectionData("basicInfo", { priceExshowroom: value });
+              // Run validation if both prices are entered
+              if (value && onroadPrice) {
+                if (Number(value) >= Number(onroadPrice)) {
+                  setPriceError(
+                    "Ex-showroom price must be lower than On-road price"
+                  );
+                } else {
+                  setPriceError("");
+                }
+              }
+            }}
+            className={`mt-1 block w-full rounded bg-background border ${
+              priceError ? "border-destructive" : "border-input"
+            } text-foreground px-3 py-2`}
           />
+          {priceError && (
+            <p className="text-destructive text-sm mt-1">{priceError}</p>
+          )}
+        </div>
+
+        {/* Pros Section */}
+        <div className="md:col-span-2">
+          <label
+            className="block text-sm font-medium text-foreground mb-1"
+            htmlFor="pros"
+          >
+            Pros
+          </label>
+          <textarea
+            id="pros"
+            name="pros"
+            rows={4}
+            value={basicInfo.pros || ""}
+            onChange={(e) =>
+              saveSectionData("basicInfo", { pros: e.target.value })
+            }
+            placeholder="Enter key advantages of this vehicle (one per line)"
+            className="mt-1 block w-full rounded bg-background border-input text-foreground px-3 py-2"
+          />
+          <p className="text-xs text-muted-foreground mt-1">
+            Enter each point on a new line
+          </p>
+        </div>
+
+        {/* Cons Section */}
+        <div className="md:col-span-2">
+          <label
+            className="block text-sm font-medium text-foreground mb-1"
+            htmlFor="cons"
+          >
+            Cons
+          </label>
+          <textarea
+            id="cons"
+            name="cons"
+            rows={4}
+            value={basicInfo.cons || ""}
+            onChange={(e) =>
+              saveSectionData("basicInfo", { cons: e.target.value })
+            }
+            placeholder="Enter potential drawbacks of this vehicle (one per line)"
+            className="mt-1 block w-full rounded bg-background border-input text-foreground px-3 py-2"
+          />
+          <p className="text-xs text-muted-foreground mt-1">
+            Enter each point on a new line
+          </p>
         </div>
       </div>
     );
@@ -545,12 +694,20 @@ Trip Meter (2 Nos.), Door Open, Key in Reminder`;
     className = "",
     section = activeSection,
     ...props
+  }: {
+    name: string;
+    defaultValue?: string | number;
+    type?: string;
+    className?: string;
+    section?: string;
+    [key: string]: any;
   }) => {
     // Get value from form state, or use default
     const storedValue = formState[section]?.[name];
     const initialValue = storedValue !== undefined ? storedValue : defaultValue;
     const [value, setValue] = useState(initialValue);
     const [focused, setFocused] = useState(false);
+    const inputId = `${section}-${name}`;
 
     // Update component value when form state or section changes
     useEffect(() => {
@@ -564,19 +721,20 @@ Trip Meter (2 Nos.), Door Open, Key in Reminder`;
     }, [section, name, formState, defaultValue]);
 
     const handleChange = useCallback(
-      (e) => {
+      (e: React.ChangeEvent<HTMLInputElement>) => {
         const newValue = e.target.value;
         setValue(newValue);
 
         // Immediately update form state when value changes
         saveSectionData(section, { [name]: newValue });
       },
-      [section, name]
+      [section, name, saveSectionData]
     );
 
     return (
       <div>
         <input
+          id={inputId}
           type={type}
           name={name}
           value={value}
@@ -587,20 +745,35 @@ Trip Meter (2 Nos.), Door Open, Key in Reminder`;
             !focused
               ? typeof defaultValue === "string"
                 ? defaultValue
-                : ""
+                : String(defaultValue)
               : ""
           }
-          className={`mt-1 block w-full rounded bg-gray-800 border-gray-700 text-white px-3 py-2 ${
-            hasError(name) ? "border-red-500" : ""
+          className={`mt-1 block w-full rounded border bg-background text-foreground px-3 py-2 ${
+            hasError(name) ? "border-destructive" : "border-input"
           } ${className}`}
           {...props}
         />
         {hasError(name) && (
-          <p className="text-red-500 text-sm mt-1">{getErrorMessage(name)}</p>
+          <p className="text-destructive text-sm mt-1">
+            {getErrorMessage(name)}
+          </p>
         )}
       </div>
     );
   };
+
+  // Initialize form state with default values when vehicle type changes
+  useEffect(() => {
+    // Set default values based on vehicle type
+    const defaultData =
+      vehicleType === "cars" ? defaultCarData : defaultBikeData;
+
+    // Initialize only if basicInfo doesn't exist yet or if vehicle type has changed
+    if (!formState.basicInfo) {
+      saveSectionData("basicInfo", defaultData);
+      console.log(`Initialized default ${vehicleType} data:`, defaultData);
+    }
+  }, [vehicleType, saveSectionData, formState.basicInfo]);
 
   // Fix the form initialization to log the process
   useEffect(() => {
@@ -615,6 +788,12 @@ Trip Meter (2 Nos.), Door Open, Key in Reminder`;
 
         if (!response.ok) {
           console.error("Failed to load form state:", response.statusText);
+
+          // If no saved state, apply default values
+          const defaultData =
+            vehicleType === "cars" ? defaultCarData : defaultBikeData;
+          saveSectionData("basicInfo", defaultData);
+
           setFormInitialized(true);
           return;
         }
@@ -649,17 +828,28 @@ Trip Meter (2 Nos.), Door Open, Key in Reminder`;
           }
 
           toast.success("Previous form data loaded");
+        } else {
+          // If no saved state, apply default values
+          const defaultData =
+            vehicleType === "cars" ? defaultCarData : defaultBikeData;
+          saveSectionData("basicInfo", defaultData);
         }
 
         setFormInitialized(true);
       } catch (error) {
         console.error("Failed to load saved form state:", error);
+
+        // If error, still apply default values
+        const defaultData =
+          vehicleType === "cars" ? defaultCarData : defaultBikeData;
+        saveSectionData("basicInfo", defaultData);
+
         setFormInitialized(true);
       }
     };
 
     loadSavedFormState();
-  }, [vehicleType]);
+  }, [vehicleType, saveSectionData]);
 
   // Fix the form saving to use formId
   useEffect(() => {
@@ -708,104 +898,17 @@ Trip Meter (2 Nos.), Door Open, Key in Reminder`;
     formInitialized,
   ]);
 
-  // Load saved form state on initial render
-  useEffect(() => {
-    const loadSavedFormState = async () => {
-      try {
-        const response = await fetch(
-          `/api/brands/vehicles/save-state?vehicleType=${vehicleType}`
-        );
-        const data = await response.json();
-
-        if (data.found && data.formState) {
-          setFormState(data.formState);
-
-          // Also restore uploaded images if they exist
-          if (data.formState.images?.mainImages?.length) {
-            setMainImages(data.formState.images.mainImages);
-          }
-
-          if (vehicleType === "cars") {
-            if (data.formState.images?.interiorImages?.length) {
-              setInteriorImages(data.formState.images.interiorImages);
-            }
-            if (data.formState.images?.exteriorImages?.length) {
-              setExteriorImages(data.formState.images.exteriorImages);
-            }
-          } else {
-            if (data.formState.images?.galleryImages?.length) {
-              setGalleryImages(data.formState.images.galleryImages);
-            }
-          }
-
-          if (data.formState.images?.colorImages?.length) {
-            setColorImages(data.formState.images.colorImages);
-          }
-
-          toast.success("Previous form data loaded");
-        }
-
-        setFormInitialized(true);
-      } catch (error) {
-        console.error("Failed to load saved form state:", error);
-        setFormInitialized(true);
-      }
-    };
-
-    loadSavedFormState();
-  }, [vehicleType]);
-
-  // Save form state whenever it changes
-  useEffect(() => {
-    // Only save if the form has been initialized to avoid overwriting with empty data
-    if (!formInitialized) return;
-
-    // Save current form state to API
-    const saveFormState = async () => {
-      try {
-        // Add image data to form state
-        const updatedFormState = {
-          ...formState,
-          images: {
-            mainImages,
-            colorImages,
-            ...(vehicleType === "cars"
-              ? { interiorImages, exteriorImages }
-              : { galleryImages }),
-          },
-        };
-
-        await fetch("/api/brands/vehicles/save-state", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            vehicleType,
-            formState: updatedFormState,
-          }),
-        });
-      } catch (error) {
-        console.error("Failed to save form state:", error);
-      }
-    };
-
-    saveFormState();
-  }, [
-    formState,
-    mainImages,
-    interiorImages,
-    exteriorImages,
-    colorImages,
-    galleryImages,
-    vehicleType,
-    formInitialized,
-  ]);
-
   // Update active sections when vehicle type changes
   useEffect(() => {
     const newActiveSections =
       vehicleType === "cars" ? SPEC_SECTIONS : BIKE_SECTIONS;
     setActiveSection(newActiveSections[0].id);
-  }, [vehicleType]);
+
+    // Apply default values when vehicle type changes
+    const defaultData =
+      vehicleType === "cars" ? defaultCarData : defaultBikeData;
+    saveSectionData("basicInfo", defaultData);
+  }, [vehicleType, saveSectionData]);
 
   // Track section changes for proper transitions
   useEffect(() => {
@@ -819,8 +922,30 @@ Trip Meter (2 Nos.), Door Open, Key in Reminder`;
     setValidationErrors({});
 
     try {
+      // Check price validation first
+      if (
+        formState.basicInfo?.priceExshowroom &&
+        formState.basicInfo?.priceOnroad
+      ) {
+        if (
+          Number(formState.basicInfo.priceExshowroom) >=
+          Number(formState.basicInfo.priceOnroad)
+        ) {
+          setPriceError("Ex-showroom price must be lower than On-road price");
+          throw new Error("Ex-showroom price must be lower than On-road price");
+        }
+      }
+
       const formData = new FormData(e.currentTarget);
       formData.append("vehicleType", vehicleType);
+
+      // Add pros and cons to form data
+      if (formState.basicInfo?.pros) {
+        formData.append("pros", formState.basicInfo.pros);
+      }
+      if (formState.basicInfo?.cons) {
+        formData.append("cons", formState.basicInfo.cons);
+      }
 
       // Validate images
       if (mainImages.length === 0) {
@@ -863,6 +988,15 @@ Trip Meter (2 Nos.), Door Open, Key in Reminder`;
     }
   };
 
+  // Function to toggle preview mode
+  const togglePreviewMode = () => {
+    setPreviewMode(!previewMode);
+    // Scroll to top when entering preview mode
+    if (!previewMode) {
+      window.scrollTo(0, 0);
+    }
+  };
+
   const hasError = (field: string): boolean => {
     return !!(
       (sectionErrors[activeSection] && sectionErrors[activeSection][field]) ||
@@ -887,7 +1021,7 @@ Trip Meter (2 Nos.), Door Open, Key in Reminder`;
         return (
           <div className="space-y-8">
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-4">
+              <label className="block text-sm font-medium text-foreground mb-4">
                 Cover Image
               </label>
               <MultipleImageUpload
@@ -900,12 +1034,14 @@ Trip Meter (2 Nos.), Door Open, Key in Reminder`;
                 }}
                 maxFiles={1}
                 label="Main Cover Image"
+                usePlaceholder={true}
+                placeholderText="Upload your vehicle's main image here"
               />
             </div>
             {vehicleType === "cars" ? (
               <>
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-4">
+                  <label className="block text-sm font-medium text-foreground mb-4">
                     Interior Gallery
                   </label>
                   <MultipleImageUpload
@@ -918,10 +1054,11 @@ Trip Meter (2 Nos.), Door Open, Key in Reminder`;
                     }}
                     maxFiles={8}
                     label="Interior Images"
+                    usePlaceholder={true}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-4">
+                  <label className="block text-sm font-medium text-foreground mb-4">
                     Exterior Gallery
                   </label>
                   <MultipleImageUpload
@@ -934,12 +1071,13 @@ Trip Meter (2 Nos.), Door Open, Key in Reminder`;
                     }}
                     maxFiles={8}
                     label="Exterior Images"
+                    usePlaceholder={true}
                   />
                 </div>
               </>
             ) : (
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-4">
+                <label className="block text-sm font-medium text-foreground mb-4">
                   Gallery Images
                 </label>
                 <MultipleImageUpload
@@ -952,12 +1090,13 @@ Trip Meter (2 Nos.), Door Open, Key in Reminder`;
                   }}
                   maxFiles={15}
                   label="Gallery Images"
+                  usePlaceholder={true}
                 />
               </div>
             )}
 
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-4">
+              <label className="block text-sm font-medium text-foreground mb-4">
                 Color Variants
               </label>
               <MultipleImageUpload
@@ -970,6 +1109,7 @@ Trip Meter (2 Nos.), Door Open, Key in Reminder`;
                 }}
                 maxFiles={10}
                 label="Color Variants"
+                usePlaceholder={true}
               />
             </div>
           </div>
@@ -980,7 +1120,7 @@ Trip Meter (2 Nos.), Door Open, Key in Reminder`;
           return (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-medium text-gray-300">
+                <label className="block text-sm font-medium text-foreground">
                   Engine Type
                 </label>
                 <InputField
@@ -989,7 +1129,7 @@ Trip Meter (2 Nos.), Door Open, Key in Reminder`;
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300">
+                <label className="block text-sm font-medium text-foreground">
                   Displacement (cc)
                 </label>
                 <InputField
@@ -1000,31 +1140,31 @@ Trip Meter (2 Nos.), Door Open, Key in Reminder`;
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300">
+                <label className="block text-sm font-medium text-foreground">
                   Max Power
                 </label>
                 <InputField name="maxPower" defaultValue="46 PS @ 8500 rpm" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300">
+                <label className="block text-sm font-medium text-foreground">
                   Max Torque
                 </label>
                 <InputField name="maxTorque" defaultValue="39 Nm @ 6500 rpm" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300">
+                <label className="block text-sm font-medium text-foreground">
                   No. of Cylinders
                 </label>
                 <InputField name="cylinders" defaultValue={1} type="number" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300">
+                <label className="block text-sm font-medium text-foreground">
                   Cooling System
                 </label>
                 <select
                   name="coolingSystem"
                   defaultValue="Liquid Cooled"
-                  className="mt-1 block w-full rounded bg-gray-800 border-gray-700 text-white px-3 py-2"
+                  className="mt-1 block w-full rounded border border-input bg-background text-foreground px-3 py-2"
                 >
                   {COOLING_SYSTEMS.map((type) => (
                     <option key={type} value={type}>
@@ -1034,13 +1174,13 @@ Trip Meter (2 Nos.), Door Open, Key in Reminder`;
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300">
+                <label className="block text-sm font-medium text-foreground">
                   Starting
                 </label>
                 <select
                   name="startingType"
                   defaultValue="Self Start Only"
-                  className="mt-1 block w-full rounded bg-gray-800 border-gray-700 text-white px-3 py-2"
+                  className="mt-1 block w-full rounded border border-input bg-background text-foreground px-3 py-2"
                 >
                   {STARTING_TYPES.map((type) => (
                     <option key={type} value={type}>
@@ -1050,13 +1190,13 @@ Trip Meter (2 Nos.), Door Open, Key in Reminder`;
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300">
+                <label className="block text-sm font-medium text-foreground">
                   Fuel Supply
                 </label>
                 <select
                   name="fuelSupply"
                   defaultValue="Fuel Injection"
-                  className="mt-1 block w-full rounded bg-gray-800 border-gray-700 text-white px-3 py-2"
+                  className="mt-1 block w-full rounded border border-input bg-background text-foreground px-3 py-2"
                 >
                   {FUEL_SUPPLY_TYPES.map((type) => (
                     <option key={type} value={type}>
@@ -1066,13 +1206,13 @@ Trip Meter (2 Nos.), Door Open, Key in Reminder`;
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300">
+                <label className="block text-sm font-medium text-foreground">
                   Clutch
                 </label>
                 <select
                   name="clutchType"
                   defaultValue="Assist & Slipper"
-                  className="mt-1 block w-full rounded bg-gray-800 border-gray-700 text-white px-3 py-2"
+                  className="mt-1 block w-full rounded border border-input bg-background text-foreground px-3 py-2"
                 >
                   {CLUTCH_TYPES.map((type) => (
                     <option key={type} value={type}>
@@ -1082,7 +1222,7 @@ Trip Meter (2 Nos.), Door Open, Key in Reminder`;
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300">
+                <label className="block text-sm font-medium text-foreground">
                   Ignition
                 </label>
                 <InputField
@@ -1091,43 +1231,43 @@ Trip Meter (2 Nos.), Door Open, Key in Reminder`;
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300">
+                <label className="block text-sm font-medium text-foreground">
                   Gear Box
                 </label>
                 <InputField name="gearBox" defaultValue="6 Speed" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300">
+                <label className="block text-sm font-medium text-foreground">
                   Bore (mm)
                 </label>
                 <InputField name="bore" defaultValue="89" type="number" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300">
+                <label className="block text-sm font-medium text-foreground">
                   Stroke (mm)
                 </label>
                 <InputField name="stroke" defaultValue="64" type="number" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300">
+                <label className="block text-sm font-medium text-foreground">
                   Compression Ratio
                 </label>
                 <InputField name="compressionRatio" defaultValue="12.71:1" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300">
+                <label className="block text-sm font-medium text-foreground">
                   Emission Type
                 </label>
                 <InputField name="emissionType" defaultValue="BS6-2.0" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300">
+                <label className="block text-sm font-medium text-foreground">
                   Drive Type
                 </label>
                 <select
                   name="driveTypeBike"
                   defaultValue="Chain Drive"
-                  className="mt-1 block w-full rounded bg-gray-800 border-gray-700 text-white px-3 py-2"
+                  className="mt-1 block w-full rounded border border-input bg-background text-foreground px-3 py-2"
                 >
                   {DRIVE_TYPES_BIKE.map((type) => (
                     <option key={type} value={type}>
@@ -1142,13 +1282,13 @@ Trip Meter (2 Nos.), Door Open, Key in Reminder`;
         return (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-medium text-gray-300">
+              <label className="block text-sm font-medium text-foreground">
                 Engine Type
               </label>
               <InputField name="engineType" defaultValue="mHawk 130 CRDe" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-300">
+              <label className="block text-sm font-medium text-foreground">
                 Displacement (cc)
               </label>
               <InputField
@@ -1158,25 +1298,25 @@ Trip Meter (2 Nos.), Door Open, Key in Reminder`;
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-300">
+              <label className="block text-sm font-medium text-foreground">
                 Max Power
               </label>
               <InputField name="maxPower" defaultValue="130.07bhp@3750rpm" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-300">
+              <label className="block text-sm font-medium text-foreground">
                 Max Torque
               </label>
               <InputField name="maxTorque" defaultValue="300Nm@1600-2800rpm" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-300">
+              <label className="block text-sm font-medium text-foreground">
                 No. of Cylinders
               </label>
               <InputField name="cylinders" defaultValue={4} type="number" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-300">
+              <label className="block text-sm font-medium text-foreground">
                 Valves Per Cylinder
               </label>
               <InputField
@@ -1186,45 +1326,45 @@ Trip Meter (2 Nos.), Door Open, Key in Reminder`;
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-300">
+              <label className="block text-sm font-medium text-foreground">
                 Turbo Charger
               </label>
               <select
                 name="turboCharger"
                 defaultValue="Yes"
-                className="mt-1 block w-full rounded bg-gray-800 border-gray-700 text-white px-3 py-2"
+                className="mt-1 block w-full rounded border border-input bg-background text-foreground px-3 py-2"
               >
                 <option value="Yes">Yes</option>
                 <option value="No">No</option>
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-300">
+              <label className="block text-sm font-medium text-foreground">
                 Transmission Type
               </label>
               <select
                 name="transmissionType"
                 defaultValue="Automatic"
-                className="mt-1 block w-full rounded bg-gray-800 border-gray-700 text-white px-3 py-2"
+                className="mt-1 block w-full rounded border border-input bg-background text-foreground px-3 py-2"
               >
                 <option value="Manual">Manual</option>
                 <option value="Automatic">Automatic</option>
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-300">
+              <label className="block text-sm font-medium text-foreground">
                 Gearbox
               </label>
               <InputField name="gearbox" defaultValue="6-Speed AT" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-300">
+              <label className="block text-sm font-medium text-foreground">
                 Drive Type
               </label>
               <select
                 name="driveType"
                 defaultValue="4WD"
-                className="mt-1 block w-full rounded bg-gray-800 border-gray-700 text-white px-3 py-2"
+                className="mt-1 block w-full rounded border border-input bg-background text-foreground px-3 py-2"
               >
                 <option value="2WD">2WD</option>
                 <option value="4WD">4WD</option>
@@ -1237,13 +1377,13 @@ Trip Meter (2 Nos.), Door Open, Key in Reminder`;
         return (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-medium text-gray-300">
+              <label className="block text-sm font-medium text-foreground">
                 Fuel Type
               </label>
               <select
                 name="fuelType"
                 defaultValue="Diesel"
-                className="mt-1 block w-full rounded bg-gray-800 border-gray-700 text-white px-3 py-2"
+                className="mt-1 block w-full rounded border border-input bg-background text-foreground px-3 py-2"
               >
                 {["Petrol", "Diesel", "CNG", "Electric"].map((type) => (
                   <option key={type} value={type}>
@@ -1253,7 +1393,7 @@ Trip Meter (2 Nos.), Door Open, Key in Reminder`;
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-300">
+              <label className="block text-sm font-medium text-foreground">
                 Fuel Tank Capacity (Litres)
               </label>
               <InputField
@@ -1263,13 +1403,13 @@ Trip Meter (2 Nos.), Door Open, Key in Reminder`;
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-300">
+              <label className="block text-sm font-medium text-foreground">
                 Highway Mileage
               </label>
               <InputField name="highwayMileage" defaultValue="10 kmpl" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-300">
+              <label className="block text-sm font-medium text-foreground">
                 Emission Norm Compliance
               </label>
               <InputField name="emissionNorm" defaultValue="BS VI 2.0" />
@@ -1315,13 +1455,13 @@ Trip Meter (2 Nos.), Door Open, Key in Reminder`;
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-300">
+              <label className="block text-sm font-medium text-foreground">
                 Steering Column
               </label>
               <select
                 name="steeringColumn"
                 defaultValue="Tilt"
-                className="mt-1 block w-full rounded bg-gray-800 border-gray-700 text-white px-3 py-2"
+                className="mt-1 block w-full rounded border border-input bg-background text-foreground px-3 py-2"
               >
                 {STEERING_COLUMNS.map((type) => (
                   <option key={type} value={type}>
@@ -1331,7 +1471,7 @@ Trip Meter (2 Nos.), Door Open, Key in Reminder`;
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-300">
+              <label className="block text-sm font-medium text-foreground">
                 Steering Gear Type
               </label>
               <InputField
@@ -1340,13 +1480,13 @@ Trip Meter (2 Nos.), Door Open, Key in Reminder`;
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-300">
+              <label className="block text-sm font-medium text-foreground">
                 Front Brake Type
               </label>
               <select
                 name="frontBrakeType"
                 defaultValue="Disc"
-                className="mt-1 block w-full rounded bg-gray-800 border-gray-700 text-white px-3 py-2"
+                className="mt-1 block w-full rounded border border-input bg-background text-foreground px-3 py-2"
               >
                 {BRAKE_TYPES.map((type) => (
                   <option key={type} value={type}>
@@ -1356,13 +1496,13 @@ Trip Meter (2 Nos.), Door Open, Key in Reminder`;
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-300">
+              <label className="block text-sm font-medium text-foreground">
                 Rear Brake Type
               </label>
               <select
                 name="rearBrakeType"
                 defaultValue="Drum"
-                className="mt-1 block w-full rounded bg-gray-800 border-gray-700 text-white px-3 py-2"
+                className="mt-1 block w-full rounded border border-input bg-background text-foreground px-3 py-2"
               >
                 {BRAKE_TYPES.map((type) => (
                   <option key={type} value={type}>
@@ -1372,7 +1512,7 @@ Trip Meter (2 Nos.), Door Open, Key in Reminder`;
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-300">
+              <label className="block text-sm font-medium text-foreground">
                 Front Wheel Size (Inch)
               </label>
               <InputField
@@ -1382,7 +1522,7 @@ Trip Meter (2 Nos.), Door Open, Key in Reminder`;
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-300">
+              <label className="block text-sm font-medium text-foreground">
                 Rear Wheel Size (Inch)
               </label>
               <InputField
@@ -1398,87 +1538,87 @@ Trip Meter (2 Nos.), Door Open, Key in Reminder`;
         return (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-medium text-gray-300">
+              <label className="block text-sm font-medium text-foreground">
                 Length (mm)
               </label>
-              <InputField name="length" defaultValue={3985} type="number" />
+              <InputField name="length" defaultValue="3985" type="number" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-300">
+              <label className="block text-sm font-medium text-foreground">
                 Width (mm)
               </label>
-              <InputField name="width" defaultValue={1820} type="number" />
+              <InputField name="width" defaultValue="1820" type="number" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-300">
+              <label className="block text-sm font-medium text-foreground">
                 Height (mm)
               </label>
-              <InputField name="height" defaultValue={1855} type="number" />
+              <InputField name="height" defaultValue="1855" type="number" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-300">
+              <label className="block text-sm font-medium text-foreground">
                 Seating Capacity
               </label>
               <InputField
                 name="seatingCapacity"
-                defaultValue={4}
+                defaultValue="4"
                 type="number"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-300">
+              <label className="block text-sm font-medium text-foreground">
                 Ground Clearance (mm)
               </label>
               <InputField
                 name="groundClearance"
-                defaultValue={226}
+                defaultValue="226"
                 type="number"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-300">
+              <label className="block text-sm font-medium text-foreground">
                 Wheel Base (mm)
               </label>
-              <InputField name="wheelBase" defaultValue={2450} type="number" />
+              <InputField name="wheelBase" defaultValue="2450" type="number" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-300">
+              <label className="block text-sm font-medium text-foreground">
                 Approach Angle
               </label>
               <InputField
                 name="approachAngle"
-                defaultValue={41.2}
+                defaultValue="41.2"
                 type="number"
                 step="0.1"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-300">
+              <label className="block text-sm font-medium text-foreground">
                 Break-over Angle
               </label>
               <InputField
                 name="breakoverAngle"
-                defaultValue={26.2}
+                defaultValue="26.2"
                 type="number"
                 step="0.1"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-300">
+              <label className="block text-sm font-medium text-foreground">
                 Departure Angle
               </label>
               <InputField
                 name="departureAngle"
-                defaultValue={36}
+                defaultValue="36"
                 type="number"
                 step="0.1"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-300">
+              <label className="block text-sm font-medium text-foreground">
                 No. of Doors
               </label>
-              <InputField name="doors" defaultValue={3} type="number" />
+              <InputField name="doors" defaultValue="3" type="number" />
             </div>
           </div>
         );
@@ -1491,10 +1631,10 @@ Trip Meter (2 Nos.), Door Open, Key in Reminder`;
                 <input
                   type="checkbox"
                   name="powerSteering"
-                  className="rounded bg-gray-800 border-gray-700 text-blue-600"
+                  className="rounded border border-input bg-background text-primary"
                   defaultChecked={true}
                 />
-                <span className="text-sm font-medium text-gray-300">
+                <span className="text-sm font-medium text-foreground">
                   Power Steering
                 </span>
               </label>
@@ -1502,10 +1642,10 @@ Trip Meter (2 Nos.), Door Open, Key in Reminder`;
                 <input
                   type="checkbox"
                   name="airConditioner"
-                  className="rounded bg-gray-800 border-gray-700 text-blue-600"
+                  className="rounded border border-input bg-background text-primary"
                   defaultChecked={true}
                 />
-                <span className="text-sm font-medium text-gray-300">
+                <span className="text-sm font-medium text-foreground">
                   Air Conditioner
                 </span>
               </label>
@@ -1513,10 +1653,10 @@ Trip Meter (2 Nos.), Door Open, Key in Reminder`;
                 <input
                   type="checkbox"
                   name="heater"
-                  className="rounded bg-gray-800 border-gray-700 text-blue-600"
+                  className="rounded border border-input bg-background text-primary"
                   defaultChecked={true}
                 />
-                <span className="text-sm font-medium text-gray-300">
+                <span className="text-sm font-medium text-foreground">
                   Heater
                 </span>
               </label>
@@ -1524,23 +1664,23 @@ Trip Meter (2 Nos.), Door Open, Key in Reminder`;
                 <input
                   type="checkbox"
                   name="adjustableSteering"
-                  className="rounded bg-gray-800 border-gray-700 text-blue-600"
+                  className="rounded border border-input bg-background text-primary"
                   defaultChecked={true}
                 />
-                <span className="text-sm font-medium text-gray-300">
+                <span className="text-sm font-medium text-foreground">
                   Adjustable Steering
                 </span>
               </label>
               {/* Add remaining checkboxes */}
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">
+              <label className="block text-sm font-medium text-foreground mb-1">
                 Parking Sensors
               </label>
               <select
                 name="parkingSensors"
                 defaultValue="Rear"
-                className="mt-1 block w-full rounded bg-gray-800 border-gray-700 text-white px-3 py-2"
+                className="mt-1 block w-full rounded border border-input bg-background text-foreground px-3 py-2"
               >
                 {PARKING_SENSOR_TYPES.map((type) => (
                   <option key={type} value={type}>
@@ -1550,19 +1690,19 @@ Trip Meter (2 Nos.), Door Open, Key in Reminder`;
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-300">
+              <label className="block text-sm font-medium text-foreground">
                 Foldable Rear Seat
               </label>
               <InputField name="foldableRearSeat" defaultValue="50:50 Split" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-300">
+              <label className="block text-sm font-medium text-foreground">
                 USB Charger
               </label>
               <select
                 name="usbCharger"
                 defaultValue="Front"
-                className="mt-1 block w-full rounded bg-gray-800 border-gray-700 text-white px-3 py-2"
+                className="mt-1 block w-full rounded border border-input bg-background text-foreground px-3 py-2"
               >
                 {USB_LOCATIONS.map((type) => (
                   <option key={type} value={type}>
@@ -1582,10 +1722,10 @@ Trip Meter (2 Nos.), Door Open, Key in Reminder`;
                 <input
                   type="checkbox"
                   name="tachometer"
-                  className="rounded bg-gray-800 border-gray-700 text-blue-600"
+                  className="rounded border border-input bg-background text-primary"
                   defaultChecked={true}
                 />
-                <span className="text-sm font-medium text-gray-300">
+                <span className="text-sm font-medium text-foreground">
                   Tachometer
                 </span>
               </label>
@@ -1593,10 +1733,10 @@ Trip Meter (2 Nos.), Door Open, Key in Reminder`;
                 <input
                   type="checkbox"
                   name="gloveBox"
-                  className="rounded bg-gray-800 border-gray-700 text-blue-600"
+                  className="rounded border border-input bg-background text-primary"
                   defaultChecked={true}
                 />
-                <span className="text-sm font-medium text-gray-300">
+                <span className="text-sm font-medium text-foreground">
                   Glove Box
                 </span>
               </label>
@@ -1604,22 +1744,22 @@ Trip Meter (2 Nos.), Door Open, Key in Reminder`;
                 <input
                   type="checkbox"
                   name="digitalCluster"
-                  className="rounded bg-gray-800 border-gray-700 text-blue-600"
+                  className="rounded border border-input bg-background text-primary"
                   defaultChecked={true}
                 />
-                <span className="text-sm font-medium text-gray-300">
+                <span className="text-sm font-medium text-foreground">
                   Digital Cluster
                 </span>
               </label>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-300">
+              <label className="block text-sm font-medium text-foreground">
                 Upholstery
               </label>
               <select
                 name="upholstery"
                 defaultValue="Leatherette"
-                className="mt-1 block w-full rounded bg-gray-800 border-gray-700 text-white px-3 py-2"
+                className="mt-1 block w-full rounded border border-input bg-background text-foreground px-3 py-2"
               >
                 {UPHOLSTERY_TYPES.map((type) => (
                   <option key={type} value={type}>
@@ -1629,7 +1769,7 @@ Trip Meter (2 Nos.), Door Open, Key in Reminder`;
               </select>
             </div>
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-300 mb-1">
+              <label className="block text-sm font-medium text-foreground mb-1">
                 Additional Interior Features
               </label>
               <textarea
@@ -1643,14 +1783,14 @@ Trip Meter (2 Nos.), Door Open, Key in Reminder`;
                     setInteriorFeaturesCleared(true);
                   }
                 }}
-                className="mt-1 block w-full rounded bg-gray-800 border-gray-700 text-white px-3 py-2"
+                className="mt-1 block w-full rounded border border-input bg-background text-foreground px-3 py-2"
               />
-              <p className="text-xs text-gray-400 mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 Enter each feature on a new line or separated by commas
               </p>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-300">
+              <label className="block text-sm font-medium text-foreground">
                 Digital Cluster Size (inch)
               </label>
               <input
@@ -1661,9 +1801,9 @@ Trip Meter (2 Nos.), Door Open, Key in Reminder`;
                 max="15"
                 step="0.1"
                 placeholder="Enter size (e.g. 7.5)"
-                className="mt-1 block w-full rounded bg-gray-800 border-gray-700 text-white px-3 py-2"
+                className="mt-1 block w-full rounded border border-input bg-background text-foreground px-3 py-2"
               />
-              <p className="text-xs text-gray-400 mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 You can enter decimal values (e.g. 7.5, 10.2)
               </p>
             </div>
@@ -1678,10 +1818,10 @@ Trip Meter (2 Nos.), Door Open, Key in Reminder`;
                 <input
                   type="checkbox"
                   name="adjustableHeadlamps"
-                  className="rounded bg-gray-800 border-gray-700 text-blue-600"
+                  className="rounded border border-input bg-background text-primary"
                   defaultChecked={true}
                 />
-                <span className="text-sm font-medium text-gray-300">
+                <span className="text-sm font-medium text-foreground">
                   Rear Window Wiper
                 </span>
               </label>
@@ -1689,10 +1829,10 @@ Trip Meter (2 Nos.), Door Open, Key in Reminder`;
                 <input
                   type="checkbox"
                   name="rearWindowDefogger"
-                  className="rounded bg-gray-800 border-gray-700 text-blue-600"
+                  className="rounded border border-input bg-background text-primary"
                   defaultChecked={true}
                 />
-                <span className="text-sm font-medium text-gray-300">
+                <span className="text-sm font-medium text-foreground">
                   Rear Window Washer
                 </span>
               </label>
@@ -1700,10 +1840,10 @@ Trip Meter (2 Nos.), Door Open, Key in Reminder`;
                 <input
                   type="checkbox"
                   name="alloyWheels"
-                  className="rounded bg-gray-800 border-gray-700 text-blue-600"
+                  className="rounded border border-input bg-background text-primary"
                   defaultChecked={true}
                 />
-                <span className="text-sm font-medium text-gray-300">
+                <span className="text-sm font-medium text-foreground">
                   Rear Window Defogger
                 </span>
               </label>
@@ -1711,10 +1851,10 @@ Trip Meter (2 Nos.), Door Open, Key in Reminder`;
                 <input
                   type="checkbox"
                   name="integratedAntenna"
-                  className="rounded bg-gray-800 border-gray-700 text-blue-600"
+                  className="rounded border border-input bg-background text-primary"
                   defaultChecked={true}
                 />
-                <span className="text-sm font-medium text-gray-300">
+                <span className="text-sm font-medium text-foreground">
                   Alloy Wheels
                 </span>
               </label>
@@ -1722,10 +1862,10 @@ Trip Meter (2 Nos.), Door Open, Key in Reminder`;
                 <input
                   type="checkbox"
                   name="halogenHeadlamps"
-                  className="rounded bg-gray-800 border-gray-700 text-blue-600"
+                  className="rounded border border-input bg-background text-primary"
                   defaultChecked={true}
                 />
-                <span className="text-sm font-medium text-gray-300">
+                <span className="text-sm font-medium text-foreground">
                   Integrated Antenna
                 </span>
               </label>
@@ -1733,20 +1873,20 @@ Trip Meter (2 Nos.), Door Open, Key in Reminder`;
                 <input
                   type="checkbox"
                   name="ledTaillights"
-                  className="rounded bg-gray-800 border-gray-700 text-blue-600"
+                  className="rounded border border-input bg-background text-primary"
                   defaultChecked={true}
                 />
-                <span className="text-sm font-medium text-gray-300">
+                <span className="text-sm font-medium text-foreground">
                   Projector Headlamps
                 </span>
               </label>
-              <label className="block text-sm font-medium text-gray-300">
+              <label className="block text-sm font-medium text-foreground">
                 Sunroof Type
               </label>
               <select
                 name="sunroofType"
                 defaultValue="None"
-                className="mt-1 block w-full rounded bg-gray-800 border-gray-700 text-white px-3 py-2"
+                className="mt-1 block w-full rounded border border-input bg-background text-foreground px-3 py-2"
               >
                 {SUNROOF_TYPES.map((type) => (
                   <option key={type} value={type}>
@@ -1758,10 +1898,10 @@ Trip Meter (2 Nos.), Door Open, Key in Reminder`;
                 <input
                   type="checkbox"
                   name="poweredFoldingORVM"
-                  className="rounded bg-gray-800 border-gray-700 text-blue-600"
+                  className="rounded border border-input bg-background text-primary"
                   defaultChecked={true}
                 />
-                <span className="text-sm font-medium text-gray-300">
+                <span className="text-sm font-medium text-foreground">
                   Powered & Folding ORVM
                 </span>
               </label>
@@ -1769,10 +1909,10 @@ Trip Meter (2 Nos.), Door Open, Key in Reminder`;
                 <input
                   type="checkbox"
                   name="ledDRLs"
-                  className="rounded bg-gray-800 border-gray-700 text-blue-600"
+                  className="rounded border border-input bg-background text-primary"
                   defaultChecked={true}
                 />
-                <span className="text-sm font-medium text-gray-300">
+                <span className="text-sm font-medium text-foreground">
                   LED DRLs
                 </span>
               </label>
@@ -1780,23 +1920,23 @@ Trip Meter (2 Nos.), Door Open, Key in Reminder`;
                 <input
                   type="checkbox"
                   name="ledTaillights"
-                  className="rounded bg-gray-800 border-gray-700 text-blue-600"
+                  className="rounded border border-input bg-background text-primary"
                   defaultChecked={true}
                 />
-                <span className="text-sm font-medium text-gray-300">
+                <span className="text-sm font-medium text-foreground">
                   LED Taillights
                 </span>
               </label>
             </div>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-300">
+                <label className="block text-sm font-medium text-foreground">
                   Fog Lights
                 </label>
                 <select
                   name="fogLights"
                   defaultValue="Front"
-                  className="mt-1 block w-full rounded bg-gray-800 border-gray-700 text-white px-3 py-2"
+                  className="mt-1 block w-full rounded border border-input bg-background text-foreground px-3 py-2"
                 >
                   {FOG_LIGHT_POSITIONS.map((type) => (
                     <option key={type} value={type}>
@@ -1806,13 +1946,13 @@ Trip Meter (2 Nos.), Door Open, Key in Reminder`;
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300">
+                <label className="block text-sm font-medium text-foreground">
                   LED Fog Lamps
                 </label>
                 <select
                   name="ledFogLamps"
                   defaultValue="Front"
-                  className="mt-1 block w-full rounded bg-gray-800 border-gray-700 text-white px-3 py-2"
+                  className="mt-1 block w-full rounded border border-input bg-background text-foreground px-3 py-2"
                 >
                   {FOG_LIGHT_POSITIONS.map((type) => (
                     <option key={type} value={type}>
@@ -1822,19 +1962,19 @@ Trip Meter (2 Nos.), Door Open, Key in Reminder`;
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300">
+                <label className="block text-sm font-medium text-foreground">
                   Tyre Size
                 </label>
                 <InputField name="tyreSize" defaultValue="255/60 R19" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300">
+                <label className="block text-sm font-medium text-foreground">
                   Tyre Type
                 </label>
                 <select
                   name="tyreType"
                   defaultValue="Radial Tubeless"
-                  className="mt-1 block w-full rounded bg-gray-800 border-gray-700 text-white px-3 py-2"
+                  className="mt-1 block w-full rounded border border-input bg-background text-foreground px-3 py-2"
                 >
                   {TYRE_TYPES.map((type) => (
                     <option key={type} value={type}>
@@ -1844,7 +1984,7 @@ Trip Meter (2 Nos.), Door Open, Key in Reminder`;
                 </select>
               </div>
               <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-300">
+                <label className="block text-sm font-medium text-foreground">
                   Additional Exterior Features
                 </label>
                 <textarea
@@ -1862,9 +2002,9 @@ Dual Tone Interiors"
                       target.value = "";
                     }
                   }}
-                  className="mt-1 block w-full rounded bg-gray-800 border-gray-700 text-white px-3 py-2"
+                  className="mt-1 block w-full rounded border border-input bg-background text-foreground px-3 py-2"
                 />
-                <p className="text-xs text-gray-400 mt-1">
+                <p className="text-xs text-muted-foreground mt-1">
                   Enter each feature on a new line or separated by commas
                 </p>
               </div>
@@ -1924,10 +2064,10 @@ Dual Tone Interiors"
                   <input
                     type="checkbox"
                     name={feature}
-                    className="rounded bg-gray-800 border-gray-700 text-blue-600"
+                    className="rounded border border-input bg-background text-primary"
                     defaultChecked={true}
                   />
-                  <span className="text-sm font-medium text-gray-300">
+                  <span className="text-sm font-medium text-foreground">
                     {feature}
                   </span>
                 </label>
@@ -1935,28 +2075,28 @@ Dual Tone Interiors"
             </div>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-300">
+                <label className="block text-sm font-medium text-foreground">
                   Additional ADAS Features
                 </label>
                 <textarea
                   name="additionalADASFeatures"
                   rows={5}
                   placeholder="Enter additional ADAS features..."
-                  className="mt-1 block w-full rounded bg-gray-800 border-gray-700 text-white px-3 py-2"
+                  className="mt-1 block w-full rounded border border-input bg-background text-foreground px-3 py-2"
                 />
-                <p className="text-xs text-gray-400 mt-1">
+                <p className="text-xs text-muted-foreground mt-1">
                   Enter each feature on a new line or separated by commas
                 </p>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300">
+                <label className="block text-sm font-medium text-foreground">
                   ADAS System Name
                 </label>
                 <input
                   type="text"
                   name="adasSystemName"
                   placeholder="e.g. Honda Sensing, Nissan ProPILOT"
-                  className="mt-1 block w-full rounded bg-gray-800 border-gray-700 text-white px-3 py-2"
+                  className="mt-1 block w-full rounded border border-input bg-background text-foreground px-3 py-2"
                 />
               </div>
             </div>
@@ -1986,10 +2126,10 @@ Dual Tone Interiors"
                   <input
                     type="checkbox"
                     name={feature}
-                    className="rounded bg-gray-800 border-gray-700 text-blue-600"
+                    className="rounded border border-input bg-background text-primary"
                     defaultChecked={true}
                   />
-                  <span className="text-sm font-medium text-gray-300">
+                  <span className="text-sm font-medium text-foreground">
                     {feature.split(/(?=[A-Z])/).join(" ")}
                   </span>
                 </label>
@@ -1997,7 +2137,7 @@ Dual Tone Interiors"
             </div>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-300">
+                <label className="block text-sm font-medium text-foreground">
                   Touchscreen Size (inch)
                 </label>
                 <input
@@ -2007,26 +2147,26 @@ Dual Tone Interiors"
                   step="0.1"
                   min="0"
                   placeholder="e.g. 7.5, 10.25"
-                  className="mt-1 block w-full rounded bg-gray-800 border-gray-700 text-white px-3 py-2"
+                  className="mt-1 block w-full rounded border border-input bg-background text-foreground px-3 py-2"
                 />
-                <p className="text-xs text-gray-400 mt-1">
+                <p className="text-xs text-muted-foreground mt-1">
                   You can enter decimal values (e.g. 7.5, 10.25)
                 </p>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300">
+                <label className="block text-sm font-medium text-foreground">
                   No. of Speakers
                 </label>
                 <InputField name="speakers" defaultValue={4} type="number" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300">
+                <label className="block text-sm font-medium text-foreground">
                   Speaker Location
                 </label>
                 <select
                   name="speakerLocation"
                   defaultValue="Front & Rear"
-                  className="mt-1 block w-full rounded bg-gray-800 border-gray-700 text-white px-3 py-2"
+                  className="mt-1 block w-full rounded border border-input bg-background text-foreground px-3 py-2"
                 >
                   {SPEAKER_LOCATIONS.map((type) => (
                     <option key={type} value={type}>
@@ -2036,7 +2176,7 @@ Dual Tone Interiors"
                 </select>
               </div>
               <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-300">
+                <label className="block text-sm font-medium text-foreground">
                   Additional Entertainment Features
                 </label>
                 <textarea
@@ -2045,7 +2185,7 @@ Dual Tone Interiors"
                   defaultValue="Connected apps,
 83 connected features,
 DTS sound staging"
-                  className="mt-1 block w-full rounded bg-gray-800 border-gray-700 text-white px-3 py-2"
+                  className="mt-1 block w-full rounded border border-input bg-background text-foreground px-3 py-2"
                   onClick={(e) => {
                     const target = e.target as HTMLTextAreaElement;
                     if (target.defaultValue === target.value) {
@@ -2053,7 +2193,7 @@ DTS sound staging"
                     }
                   }}
                 />
-                <p className="text-xs text-gray-400 mt-1">
+                <p className="text-xs text-muted-foreground mt-1">
                   Enter each feature on a new line or separated by commas
                 </p>
               </div>
@@ -2069,10 +2209,10 @@ DTS sound staging"
                 <input
                   type="checkbox"
                   name="eCallICall"
-                  className="rounded bg-gray-800 border-gray-700 text-blue-600"
+                  className="rounded border border-input bg-background text-primary"
                   defaultChecked={true}
                 />
-                <span className="text-sm font-medium text-gray-300">
+                <span className="text-sm font-medium text-foreground">
                   E-Call & I-Call
                 </span>
               </label>
@@ -2080,10 +2220,10 @@ DTS sound staging"
                 <input
                   type="checkbox"
                   name="overSpeedingAlert"
-                  className="rounded bg-gray-800 border-gray-700 text-blue-600"
+                  className="rounded border border-input bg-background text-primary"
                   defaultChecked={true}
                 />
-                <span className="text-sm font-medium text-gray-300">
+                <span className="text-sm font-medium text-foreground">
                   Remote Vehicle Ignition Start/Stop
                 </span>
               </label>
@@ -2091,10 +2231,10 @@ DTS sound staging"
                 <input
                   type="checkbox"
                   name="overSpeedingAlert"
-                  className="rounded bg-gray-800 border-gray-700 text-blue-600"
+                  className="rounded border border-input bg-background text-primary"
                   defaultChecked={true}
                 />
-                <span className="text-sm font-medium text-gray-300">
+                <span className="text-sm font-medium text-foreground">
                   SOS Button
                 </span>
               </label>
@@ -2102,10 +2242,10 @@ DTS sound staging"
                 <input
                   type="checkbox"
                   name="overSpeedingAlert"
-                  className="rounded bg-gray-800 border-gray-700 text-blue-600"
+                  className="rounded border border-input bg-background text-primary"
                   defaultChecked={true}
                 />
-                <span className="text-sm font-medium text-gray-300">
+                <span className="text-sm font-medium text-foreground">
                   Remote AC On/Off
                 </span>
               </label>
@@ -2113,10 +2253,10 @@ DTS sound staging"
                 <input
                   type="checkbox"
                   name="overSpeedingAlert"
-                  className="rounded bg-gray-800 border-gray-700 text-blue-600"
+                  className="rounded border border-input bg-background text-primary"
                   defaultChecked={true}
                 />
-                <span className="text-sm font-medium text-gray-300">
+                <span className="text-sm font-medium text-foreground">
                   Geo-fence Alert
                 </span>
               </label>
@@ -2132,10 +2272,10 @@ DTS sound staging"
                 <input
                   type="checkbox"
                   name="usbChargingPort"
-                  className="rounded bg-gray-800 border-gray-700 text-blue-600"
+                  className="rounded border border-input bg-background text-primary"
                   defaultChecked={true}
                 />
-                <span className="text-sm font-medium text-gray-300">
+                <span className="text-sm font-medium text-foreground">
                   USB Charging Port
                 </span>
               </label>
@@ -2143,10 +2283,10 @@ DTS sound staging"
                 <input
                   type="checkbox"
                   name="cruiseControl"
-                  className="rounded bg-gray-800 border-gray-700 text-blue-600"
+                  className="rounded border border-input bg-background text-primary"
                   defaultChecked={true}
                 />
-                <span className="text-sm font-medium text-gray-300">
+                <span className="text-sm font-medium text-foreground">
                   Cruise Control
                 </span>
               </label>
@@ -2154,10 +2294,10 @@ DTS sound staging"
                 <input
                   type="checkbox"
                   name="bodyGraphics"
-                  className="rounded bg-gray-800 border-gray-700 text-blue-600"
+                  className="rounded border border-input bg-background text-primary"
                   defaultChecked={true}
                 />
-                <span className="text-sm font-medium text-gray-300">
+                <span className="text-sm font-medium text-foreground">
                   Body Graphics
                 </span>
               </label>
@@ -2165,10 +2305,10 @@ DTS sound staging"
                 <input
                   type="checkbox"
                   name="stepupSeat"
-                  className="rounded bg-gray-800 border-gray-700 text-blue-600"
+                  className="rounded border border-input bg-background text-primary"
                   defaultChecked={true}
                 />
-                <span className="text-sm font-medium text-gray-300">
+                <span className="text-sm font-medium text-foreground">
                   Step-up Seat
                 </span>
               </label>
@@ -2176,23 +2316,23 @@ DTS sound staging"
                 <input
                   type="checkbox"
                   name="passengerFootrest"
-                  className="rounded bg-gray-800 border-gray-700 text-blue-600"
+                  className="rounded border border-input bg-background text-primary"
                   defaultChecked={true}
                 />
-                <span className="text-sm font-medium text-gray-300">
+                <span className="text-sm font-medium text-foreground">
                   Passenger Footrest
                 </span>
               </label>
             </div>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-300">
+                <label className="block text-sm font-medium text-foreground">
                   Instrument Console
                 </label>
                 <select
                   name="instrumentConsole"
                   defaultValue="Digital"
-                  className="mt-1 block w-full rounded bg-gray-800 border-gray-700 text-white px-3 py-2"
+                  className="mt-1 block w-full rounded border border-input bg-background text-foreground px-3 py-2"
                 >
                   {CONSOLE_TYPES.map((type) => (
                     <option key={type} value={type}>
@@ -2202,13 +2342,13 @@ DTS sound staging"
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300">
+                <label className="block text-sm font-medium text-foreground">
                   Speedometer
                 </label>
                 <select
                   name="speedometerType"
                   defaultValue="Digital"
-                  className="mt-1 block w-full rounded bg-gray-800 border-gray-700 text-white px-3 py-2"
+                  className="mt-1 block w-full rounded border border-input bg-background text-foreground px-3 py-2"
                 >
                   {INSTRUMENT_DISPLAY_TYPES.map((type) => (
                     <option key={type} value={type}>
@@ -2218,13 +2358,13 @@ DTS sound staging"
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300">
+                <label className="block text-sm font-medium text-foreground">
                   Tachometer
                 </label>
                 <select
                   name="tachometerType"
                   defaultValue="Digital"
-                  className="mt-1 block w-full rounded bg-gray-800 border-gray-700 text-white px-3 py-2"
+                  className="mt-1 block w-full rounded border border-input bg-background text-foreground px-3 py-2"
                 >
                   {INSTRUMENT_DISPLAY_TYPES.map((type) => (
                     <option key={type} value={type}>
@@ -2234,13 +2374,13 @@ DTS sound staging"
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300">
+                <label className="block text-sm font-medium text-foreground">
                   Tripmeter
                 </label>
                 <select
                   name="tripmeterType"
                   defaultValue="Digital"
-                  className="mt-1 block w-full rounded bg-gray-800 border-gray-700 text-white px-3 py-2"
+                  className="mt-1 block w-full rounded border border-input bg-background text-foreground px-3 py-2"
                 >
                   {INSTRUMENT_DISPLAY_TYPES.map((type) => (
                     <option key={type} value={type}>
@@ -2250,13 +2390,13 @@ DTS sound staging"
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300">
+                <label className="block text-sm font-medium text-foreground">
                   Odometer
                 </label>
                 <select
                   name="odometerType"
                   defaultValue="Digital"
-                  className="mt-1 block w-full rounded bg-gray-800 border-gray-700 text-white px-3 py-2"
+                  className="mt-1 block w-full rounded border border-input bg-background text-foreground px-3 py-2"
                 >
                   {INSTRUMENT_DISPLAY_TYPES.map((type) => (
                     <option key={type} value={type}>
@@ -2266,13 +2406,13 @@ DTS sound staging"
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300">
+                <label className="block text-sm font-medium text-foreground">
                   Clock
                 </label>
                 <select
                   name="clockType"
                   defaultValue="Digital"
-                  className="mt-1 block w-full rounded bg-gray-800 border-gray-700 text-white px-3 py-2"
+                  className="mt-1 block w-full rounded border border-input bg-background text-foreground px-3 py-2"
                 >
                   {INSTRUMENT_DISPLAY_TYPES.map((type) => (
                     <option key={type} value={type}>
@@ -2282,13 +2422,13 @@ DTS sound staging"
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300">
+                <label className="block text-sm font-medium text-foreground">
                   Seat Type
                 </label>
                 <select
                   name="seatType"
                   defaultValue="Split"
-                  className="mt-1 block w-full rounded bg-gray-800 border-gray-700 text-white px-3 py-2"
+                  className="mt-1 block w-full rounded border border-input bg-background text-foreground px-3 py-2"
                 >
                   {SEAT_TYPES.map((type) => (
                     <option key={type} value={type}>
@@ -2298,7 +2438,7 @@ DTS sound staging"
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300">
+                <label className="block text-sm font-medium text-foreground">
                   Additional Features
                 </label>
                 <InputField
@@ -2318,10 +2458,10 @@ DTS sound staging"
                 <input
                   type="checkbox"
                   name="passSwitch"
-                  className="rounded bg-gray-800 border-gray-700 text-blue-600"
+                  className="rounded border border-input bg-background text-primary"
                   defaultChecked={true}
                 />
-                <span className="text-sm font-medium text-gray-300">
+                <span className="text-sm font-medium text-foreground">
                   Pass Switch
                 </span>
               </label>
@@ -2329,10 +2469,10 @@ DTS sound staging"
                 <input
                   type="checkbox"
                   name="ridingModes"
-                  className="rounded bg-gray-800 border-gray-700 text-blue-600"
+                  className="rounded border border-input bg-background text-primary"
                   defaultChecked={true}
                 />
-                <span className="text-sm font-medium text-gray-300">
+                <span className="text-sm font-medium text-foreground">
                   Riding Modes
                 </span>
               </label>
@@ -2340,10 +2480,10 @@ DTS sound staging"
                 <input
                   type="checkbox"
                   name="tractionControl"
-                  className="rounded bg-gray-800 border-gray-700 text-blue-600"
+                  className="rounded border border-input bg-background text-primary"
                   defaultChecked={true}
                 />
-                <span className="text-sm font-medium text-gray-300">
+                <span className="text-sm font-medium text-foreground">
                   Traction Control
                 </span>
               </label>
@@ -2351,10 +2491,10 @@ DTS sound staging"
                 <input
                   type="checkbox"
                   name="launchControl"
-                  className="rounded bg-gray-800 border-gray-700 text-blue-600"
+                  className="rounded border border-input bg-background text-primary"
                   defaultChecked={true}
                 />
-                <span className="text-sm font-medium text-gray-300">
+                <span className="text-sm font-medium text-foreground">
                   Launch Control
                 </span>
               </label>
@@ -2362,23 +2502,23 @@ DTS sound staging"
                 <input
                   type="checkbox"
                   name="quickShifter"
-                  className="rounded bg-gray-800 border-gray-700 text-blue-600"
+                  className="rounded border border-input bg-background text-primary"
                   defaultChecked={true}
                 />
-                <span className="text-sm font-medium text-gray-300">
+                <span className="text-sm font-medium text-foreground">
                   Quick Shifter
                 </span>
               </label>
             </div>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-300">
+                <label className="block text-sm font-medium text-foreground">
                   ABS Type
                 </label>
                 <select
                   name="absType"
                   defaultValue="Dual Channel"
-                  className="mt-1 block w-full rounded bg-gray-800 border-gray-700 text-white px-3 py-2"
+                  className="mt-1 block w-full rounded border border-input bg-background text-foreground px-3 py-2"
                 >
                   {ABS_TYPES.map((type) => (
                     <option key={type} value={type}>
@@ -2388,13 +2528,13 @@ DTS sound staging"
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300">
+                <label className="block text-sm font-medium text-foreground">
                   Clock
                 </label>
                 <select
                   name="clockType"
                   defaultValue="Digital"
-                  className="mt-1 block w-full rounded bg-gray-800 border-gray-700 text-white px-3 py-2"
+                  className="mt-1 block w-full rounded border border-input bg-background text-foreground px-3 py-2"
                 >
                   {INSTRUMENT_DISPLAY_TYPES.map((type) => (
                     <option key={type} value={type}>
@@ -2404,7 +2544,7 @@ DTS sound staging"
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300">
+                <label className="block text-sm font-medium text-foreground">
                   Display
                 </label>
                 <InputField name="displayType" defaultValue="5 Inch, TFT" />
@@ -2417,7 +2557,7 @@ DTS sound staging"
         return (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-medium text-gray-300">
+              <label className="block text-sm font-medium text-foreground">
                 Overall Mileage (kmpl)
               </label>
               <InputField
@@ -2428,7 +2568,7 @@ DTS sound staging"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-300">
+              <label className="block text-sm font-medium text-foreground">
                 Top Speed (kmph)
               </label>
               <InputField name="topSpeed" defaultValue="167" type="number" />
@@ -2440,13 +2580,13 @@ DTS sound staging"
         return (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-medium text-gray-300">
+              <label className="block text-sm font-medium text-foreground">
                 Body Type
               </label>
               <select
                 name="bodyType"
                 defaultValue="Sports Naked Bikes"
-                className="mt-1 block w-full rounded bg-gray-800 border-gray-700 text-white px-3 py-2"
+                className="mt-1 block w-full rounded border border-input bg-background text-foreground px-3 py-2"
               >
                 {BODY_TYPES.map((type) => (
                   <option key={type} value={type}>
@@ -2456,7 +2596,7 @@ DTS sound staging"
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-300">
+              <label className="block text-sm font-medium text-foreground">
                 Frame Type
               </label>
               <InputField name="frameType" defaultValue="Split-Trellis frame" />
@@ -2468,13 +2608,13 @@ DTS sound staging"
         return (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-medium text-gray-300">
+              <label className="block text-sm font-medium text-foreground">
                 Fuel Capacity (L)
               </label>
               <InputField name="fuelCapacity" defaultValue="15" type="number" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-300">
+              <label className="block text-sm font-medium text-foreground">
                 Saddle Height (mm)
               </label>
               <InputField
@@ -2484,7 +2624,7 @@ DTS sound staging"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-300">
+              <label className="block text-sm font-medium text-foreground">
                 Ground Clearance (mm)
               </label>
               <InputField
@@ -2494,13 +2634,13 @@ DTS sound staging"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-300">
+              <label className="block text-sm font-medium text-foreground">
                 Wheelbase (mm)
               </label>
               <InputField name="wheelbase" defaultValue="1354" type="number" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-300">
+              <label className="block text-sm font-medium text-foreground">
                 Kerb Weight (kg)
               </label>
               <InputField
@@ -2518,13 +2658,13 @@ DTS sound staging"
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-300">
+                <label className="block text-sm font-medium text-foreground">
                   Headlight
                 </label>
                 <select
                   name="headlightType"
                   defaultValue="LED"
-                  className="mt-1 block w-full rounded bg-gray-800 border-gray-700 text-white px-3 py-2"
+                  className="mt-1 block w-full rounded border border-input bg-background text-foreground px-3 py-2"
                 >
                   {LIGHT_TYPES.map((type) => (
                     <option key={type} value={type}>
@@ -2534,13 +2674,13 @@ DTS sound staging"
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300">
+                <label className="block text-sm font-medium text-foreground">
                   Taillight
                 </label>
                 <select
                   name="taillightType"
                   defaultValue="LED"
-                  className="mt-1 block w-full rounded bg-gray-800 border-gray-700 text-white px-3 py-2"
+                  className="mt-1 block w-full rounded border border-input bg-background text-foreground px-3 py-2"
                 >
                   {LIGHT_TYPES.map((type) => (
                     <option key={type} value={type}>
@@ -2550,13 +2690,13 @@ DTS sound staging"
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300">
+                <label className="block text-sm font-medium text-foreground">
                   Turn Signal Lamp
                 </label>
                 <select
                   name="turnSignalType"
                   defaultValue="LED"
-                  className="mt-1 block w-full rounded bg-gray-800 border-gray-700 text-white px-3 py-2"
+                  className="mt-1 block w-full rounded border border-input bg-background text-foreground px-3 py-2"
                 >
                   {LIGHT_TYPES.map((type) => (
                     <option key={type} value={type}>
@@ -2571,10 +2711,10 @@ DTS sound staging"
                 <input
                   type="checkbox"
                   name="ledTaillights"
-                  className="rounded bg-gray-800 border-gray-700 text-blue-600"
+                  className="rounded border border-input bg-background text-primary"
                   defaultChecked={true}
                 />
-                <span className="text-sm font-medium text-gray-300">
+                <span className="text-sm font-medium text-foreground">
                   LED Taillights
                 </span>
               </label>
@@ -2582,10 +2722,10 @@ DTS sound staging"
                 <input
                   type="checkbox"
                   name="lowBatteryIndicator"
-                  className="rounded bg-gray-800 border-gray-700 text-blue-600"
+                  className="rounded border border-input bg-background text-primary"
                   defaultChecked={true}
                 />
-                <span className="text-sm font-medium text-gray-300">
+                <span className="text-sm font-medium text-foreground">
                   Low Battery Indicator
                 </span>
               </label>
@@ -2593,10 +2733,10 @@ DTS sound staging"
                 <input
                   type="checkbox"
                   name="lowFuelIndicator"
-                  className="rounded bg-gray-800 border-gray-700 text-blue-600"
+                  className="rounded border border-input bg-background text-primary"
                   defaultChecked={true}
                 />
-                <span className="text-sm font-medium text-gray-300">
+                <span className="text-sm font-medium text-foreground">
                   Low Fuel Indicator
                 </span>
               </label>
@@ -2608,7 +2748,7 @@ DTS sound staging"
         return (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-medium text-gray-300">
+              <label className="block text-sm font-medium text-foreground">
                 Front Brake Diameter (mm)
               </label>
               <InputField
@@ -2618,7 +2758,7 @@ DTS sound staging"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-300">
+              <label className="block text-sm font-medium text-foreground">
                 Rear Brake Diameter (mm)
               </label>
               <InputField
@@ -2628,31 +2768,31 @@ DTS sound staging"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-300">
+              <label className="block text-sm font-medium text-foreground">
                 Front Brake Type
               </label>
               <InputField name="frontBrakeType" defaultValue="Disc" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-300">
+              <label className="block text-sm font-medium text-foreground">
                 Rear Brake Type
               </label>
               <InputField name="rearBrakeType" defaultValue="Disc" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-300">
+              <label className="block text-sm font-medium text-foreground">
                 Front Tyre Size
               </label>
               <InputField name="frontTyreSize" defaultValue="110/70-17" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-300">
+              <label className="block text-sm font-medium text-foreground">
                 Rear Tyre Size
               </label>
               <InputField name="rearTyreSize" defaultValue="150/60-17" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-300">
+              <label className="block text-sm font-medium text-foreground">
                 Wheel Size
               </label>
               <InputField
@@ -2661,7 +2801,7 @@ DTS sound staging"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-300">
+              <label className="block text-sm font-medium text-foreground">
                 Wheel Type
               </label>
               <InputField name="wheelType" defaultValue="Alloy" />
@@ -2671,10 +2811,10 @@ DTS sound staging"
                 <input
                   type="checkbox"
                   name="tubelessTyre"
-                  className="rounded bg-gray-800 border-gray-700 text-blue-600"
+                  className="rounded border border-input bg-background text-primary"
                   defaultChecked={true}
                 />
-                <span className="text-sm font-medium text-gray-300">
+                <span className="text-sm font-medium text-foreground">
                   Tubeless Tyre
                 </span>
               </label>
@@ -2686,7 +2826,7 @@ DTS sound staging"
         return (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-medium text-gray-300">
+              <label className="block text-sm font-medium text-foreground">
                 Peak Power
               </label>
               <InputField name="peakPower" defaultValue="46 PS @ 8500 rpm" />
@@ -2696,10 +2836,10 @@ DTS sound staging"
                 <input
                   type="checkbox"
                   name="lowBatteryAlert"
-                  className="rounded bg-gray-800 border-gray-700 text-blue-600"
+                  className="rounded border border-input bg-background text-primary"
                   defaultChecked={true}
                 />
-                <span className="text-sm font-medium text-gray-300">
+                <span className="text-sm font-medium text-foreground">
                   Low Battery Alert
                 </span>
               </label>
@@ -2711,7 +2851,7 @@ DTS sound staging"
         return (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-medium text-gray-300">
+              <label className="block text-sm font-medium text-foreground">
                 Suspension Front
               </label>
               <InputField
@@ -2720,7 +2860,7 @@ DTS sound staging"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-300">
+              <label className="block text-sm font-medium text-foreground">
                 Suspension Rear
               </label>
               <InputField
@@ -2734,22 +2874,33 @@ DTS sound staging"
       default:
         return null;
     }
-  }, [activeSection, vehicleType, validationErrors]);
+  }, [
+    activeSection,
+    vehicleType,
+    validationErrors,
+    mainImages,
+    interiorImages,
+    exteriorImages,
+    galleryImages,
+    colorImages,
+    interiorFeatures,
+    interiorFeaturesCleared,
+  ]);
 
-  const renderSectionButton = (section) => (
+  const renderSectionButton = (section: { id: string; label: string }) => (
     <button
       key={section.id}
       type="button"
       onClick={() => setActiveSection(section.id)}
       className={`w-full text-left px-4 py-2 rounded flex items-center justify-between ${
         activeSection === section.id
-          ? "bg-blue-600 text-white"
-          : "text-gray-400 hover:bg-gray-800"
+          ? "bg-primary text-primary-foreground"
+          : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
       }`}
     >
       <span>{section.label}</span>
       {sectionCompletionStatus[section.id] && (
-        <span className="text-green-400 text-sm">✓</span>
+        <span className="text-success text-sm">✓</span>
       )}
     </button>
   );
@@ -2764,8 +2915,8 @@ DTS sound staging"
   // Show loading state while checking auth
   if (isLoading) {
     return (
-      <div className="bg-gray-950 p-8 flex items-center justify-center">
-        <div className="text-white">Loading...</div>
+      <div className="bg-background p-8 flex items-center justify-center">
+        <div className="text-foreground">Loading...</div>
       </div>
     );
   }
@@ -2775,96 +2926,144 @@ DTS sound staging"
     return null; // Will redirect via useAuthCheck
   }
 
+  // Render preview mode if enabled
+  if (previewMode) {
+    return (
+      <div className="w-full min-h-screen bg-background p-8">
+        <div className="max-w-5xl mx-auto bg-card rounded-lg border p-8">
+          <div className="flex justify-between items-center mb-6">
+            <h1 className="text-2xl font-bold text-foreground">
+              Vehicle Preview
+            </h1>
+            <Button onClick={togglePreviewMode} variant="outline">
+              Back to Edit
+            </Button>
+          </div>
+
+          <VehiclePreview
+            vehicleData={formState}
+            vehicleType={vehicleType}
+            images={{
+              main: mainImages[0] || "/placeholder.svg",
+              interior: interiorImages,
+              exterior: exteriorImages,
+              gallery: galleryImages,
+              colors: colorImages,
+            }}
+          />
+
+          <div className="mt-8 flex justify-end">
+            <Button
+              onClick={() => handleSubmit(new Event("submit") as any)}
+              disabled={isSubmitting}
+              className={isSubmitting ? "opacity-50" : ""}
+            >
+              {isSubmitting ? "Creating..." : "Create Vehicle"}
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Regular form view
   return (
-    <div className="w-full min-h-screen bg-gray-950 p-8">
+    <div className="w-full min-h-screen bg-background p-8">
       <form onSubmit={handleSubmit} className="max-w-full mx-auto">
         <div className="flex gap-6">
           {/* Side Panel */}
-          <div className="w-64 flex-shrink-0 bg-gray-900 p-4 rounded-lg border border-gray-800">
+          <div className="w-64 flex-shrink-0 bg-card p-4 rounded-lg border">
             <nav className="space-y-2 sticky top-4">
               {activeSections.map((section) => renderSectionButton(section))}
             </nav>
           </div>
+
           {/* Main Form Content */}
-          <div className="flex-1 bg-gray-900 p-6 rounded-lg border border-gray-800">
-            <h1 className="text-2xl font-bold text-white mb-6">
+          <div className="flex-1 bg-card p-6 rounded-lg border">
+            <h1 className="text-2xl font-bold text-foreground mb-6">
               Add New Vehicle
             </h1>
-            {/* Vehicle Type Selection */}
-            <div className="flex gap-4 mb-6">
-              <button
-                type="button"
-                onClick={() => handleVehicleTypeChange("cars")}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg ${
-                  vehicleType === "cars"
-                    ? "bg-blue-600 text-white"
-                    : "bg-gray-800 text-gray-400"
-                }`}
-              >
-                <Car className="w-5 h-5" />
-                Car
-              </button>
-              <button
-                type="button"
-                onClick={() => handleVehicleTypeChange("bikes")}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg ${
-                  vehicleType === "bikes"
-                    ? "bg-blue-600 text-white"
-                    : "bg-gray-800 text-gray-400"
-                }`}
-              >
-                <Bike className="w-5 h-5" />
-                Bike
-              </button>
-            </div>
+
+            {/* Vehicle Type Selection - Changed to Tabs */}
+            <Tabs
+              defaultValue={vehicleType}
+              value={vehicleType}
+              onValueChange={(value) =>
+                handleVehicleTypeChange(value as "cars" | "bikes")
+              }
+              className="w-[400px] mb-6"
+            >
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="cars" className="flex items-center gap-2">
+                  <Car className="h-4 w-4" /> Car
+                </TabsTrigger>
+                <TabsTrigger value="bikes" className="flex items-center gap-2">
+                  <Bike className="h-4 w-4" /> Bike
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+
             {/* Dynamic Section Content */}
             <div className="space-y-6">{renderSectionFields()}</div>
+
             {/* Navigation Buttons */}
             <div className="mt-6 flex justify-between gap-4">
-              <button
+              <Button
                 type="button"
                 onClick={handlePreviousSection}
                 disabled={activeSection === activeSections[0].id}
-                className={`px-6 py-2 rounded-lg bg-gray-700 text-white font-medium ${
-                  activeSection === activeSections[0].id
-                    ? "opacity-50 cursor-not-allowed"
-                    : "hover:bg-gray-600"
-                }`}
+                variant="outline"
               >
                 Previous
-              </button>
-              {activeSection ===
-              activeSections[activeSections.length - 1].id ? (
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className={`px-6 py-2 rounded-lg bg-blue-600 text-white font-medium ${
-                    isSubmitting
-                      ? "opacity-50 cursor-not-allowed"
-                      : "hover:bg-blue-700"
-                  }`}
-                >
-                  {isSubmitting ? "Creating..." : "Create Vehicle"}
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={handleNextSection}
-                  className="px-6 py-2 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700"
-                >
-                  Next
-                </button>
-              )}
+              </Button>
+
+              <div className="flex gap-2">
+                {activeSection ===
+                  activeSections[activeSections.length - 1].id && (
+                  <Button
+                    type="button"
+                    onClick={togglePreviewMode}
+                    variant="secondary"
+                  >
+                    Preview
+                  </Button>
+                )}
+
+                {activeSection ===
+                activeSections[activeSections.length - 1].id ? (
+                  <Button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className={isSubmitting ? "opacity-50" : ""}
+                  >
+                    {isSubmitting ? "Creating..." : "Create Vehicle"}
+                  </Button>
+                ) : (
+                  <Button type="button" onClick={handleNextSection}>
+                    Next
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
         </div>
       </form>
 
       {error && (
-        <div className="mt-4 bg-red-500/10 border border-red-500 text-red-500 px-4 py-2 rounded">
+        <div className="mt-4 bg-destructive/10 border border-destructive text-destructive px-4 py-2 rounded">
           {error}
         </div>
       )}
+    </div>
+  );
+}
+
+// Define InfoCard component outside the main component
+function InfoCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="bg-background border rounded-md p-3">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="text-sm font-medium text-foreground mt-1">{value}</p>
     </div>
   );
 }
