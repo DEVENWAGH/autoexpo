@@ -16,7 +16,6 @@ import {
   FormInput,
   FormCheckbox,
 } from "@/components/ui/form-components";
-import { useAuthCheck } from "@/lib/authCheck";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -216,7 +215,6 @@ const PRETENSIONER_OPTIONS = [
 
 export default function NewVehicle() {
   const router = useRouter();
-  const { isLoading, isAuthenticated } = useAuthCheck();
   const { theme, resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const {
@@ -2911,21 +2909,6 @@ DTS sound staging"
     const newSections = type === "cars" ? SPEC_SECTIONS : BIKE_SECTIONS;
     setActiveSection(newSections[0].id);
   };
-
-  // Show loading state while checking auth
-  if (isLoading) {
-    return (
-      <div className="bg-background p-8 flex items-center justify-center">
-        <div className="text-foreground">Loading...</div>
-      </div>
-    );
-  }
-
-  // Don't render the form if not authenticated
-  if (!isAuthenticated) {
-    return null; // Will redirect via useAuthCheck
-  }
-
   // Render preview mode if enabled
   if (previewMode) {
     return (
@@ -2939,18 +2922,6 @@ DTS sound staging"
               Back to Edit
             </Button>
           </div>
-
-          <VehiclePreview
-            vehicleData={formState}
-            vehicleType={vehicleType}
-            images={{
-              main: mainImages[0] || "/placeholder.svg",
-              interior: interiorImages,
-              exterior: exteriorImages,
-              gallery: galleryImages,
-              colors: colorImages,
-            }}
-          />
 
           <div className="mt-8 flex justify-end">
             <Button

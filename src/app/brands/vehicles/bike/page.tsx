@@ -5,12 +5,16 @@ import { MultipleImageUpload } from "@/components/ui/MultipleImageUpload";
 import { useState, useCallback, useEffect } from "react";
 import { vehicleService } from "@/services/vehicleService";
 import { toast } from "react-hot-toast";
-import { useAuthCheck } from "@/lib/authCheck";
 import { Button } from "@/components/ui/button";
 import { BikePreview } from "@/components/vehicle/BikePreview";
 import { useVehicleStore, BIKE_PLACEHOLDERS } from "@/store/vehicleStore";
-import { validateSection, validatePrices, validateImages } from "@/validation/formValidation";
-import { PlaceholderInput, PlaceholderTextarea, SectionButton, FormField, FormSection } from "@/components/form/FormComponents";
+import { validateSection, validatePrices } from "@/validation/formValidation";
+import {
+  PlaceholderInput,
+  PlaceholderTextarea,
+  SectionButton,
+  FormField,
+} from "@/components/form/FormComponents";
 
 const BIKE_BRANDS = [
   "Bajaj",
@@ -65,13 +69,27 @@ const BODY_TYPES = [
   "Scooter",
 ] as const;
 
+const BIKE_TYPES = [
+  "Sports Bike",
+  "Naked Sports",
+  "Cruiser",
+  "Commuter",
+  "Adventure/Tourer",
+  "Scooter",
+  "Dirt Bike",
+  "Electric",
+  "Cafe Racer",
+  "Supermoto",
+  "Scrambler",
+  "Retro/Classic",
+  "Street Fighter",
+] as const;
+
 export default function NewBikePage() {
   const router = useRouter();
-  const { isLoading, isAuthenticated } = useAuthCheck();
-  const { 
-    vehicleType,
+  const {
     formState,
-    mainImages, 
+    mainImages,
     galleryImages,
     colorImages,
     setVehicleType,
@@ -79,56 +97,82 @@ export default function NewBikePage() {
     setGalleryImages,
     setColorImages,
     updateFormSection,
-    reset
+    reset,
   } = useVehicleStore();
 
-  const [activeSection, setActiveSection] = useState<string>(BIKE_SECTIONS[0].id);
-  const [sectionCompletionStatus, setSectionCompletionStatus] = useState<Record<string, boolean>>({});
+  const [activeSection, setActiveSection] = useState<string>(
+    BIKE_SECTIONS[0].id
+  );
+  const [sectionCompletionStatus, setSectionCompletionStatus] = useState<
+    Record<string, boolean>
+  >({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string>("");
-  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const [validationErrors, setValidationErrors] = useState<
+    Record<string, string>
+  >({});
   const [previewMode, setPreviewMode] = useState(false);
 
   // Setup initial vehicle type
   useEffect(() => {
-    setVehicleType('bikes');
+    setVehicleType("bikes");
   }, [setVehicleType]);
 
   // Save form data helper
-  const handleFieldChange = useCallback((section: string, field: string, value: any) => {
-    updateFormSection(section, { [field]: value });
-  }, [updateFormSection]);
+  const handleFieldChange = useCallback(
+    (section: string, field: string, value: any) => {
+      updateFormSection(section, { [field]: value });
+    },
+    [updateFormSection]
+  );
 
-  // Validate current section
+  // Validate current section - fixing type issues
   const validateCurrentSection = useCallback(() => {
-    if (!formState || !formState[activeSection]) return true;
-    
+    if (!formState?.[activeSection]) return true;
+
     // Special handling for images section
     if (activeSection === "images") {
       // Mark as valid only if at least one main image exists
       return mainImages.length > 0;
     }
-    
-    const { isValid, errors } = validateSection(activeSection, formState[activeSection]);
-    
+
+    const { isValid, errors } = validateSection(
+      activeSection,
+      formState[activeSection] || {}
+    );
+
     // Special case for price validation in basicInfo section - only run if basic validation passes
-    if (activeSection === "basicInfo" && isValid && formState.basicInfo?.priceExshowroom && formState.basicInfo?.priceOnroad) {
+    if (
+      activeSection === "basicInfo" &&
+      isValid &&
+      formState.basicInfo?.priceExshowroom &&
+      formState.basicInfo?.priceOnroad
+    ) {
       const priceCheck = validatePrices(
-        formState.basicInfo.priceExshowroom, 
+        formState.basicInfo.priceExshowroom,
         formState.basicInfo.priceOnroad
       );
-      
+
       if (!priceCheck.isValid) {
         setValidationErrors({
-          priceExshowroom: priceCheck.error
+          priceExshowroom: priceCheck.error ?? "Price error",
         });
         return false;
       }
     }
-    
+
     // Only set validation errors if there are actual errors
     if (!isValid) {
-      setValidationErrors(errors || {});
+      // Convert errors to proper Record<string, string> format
+      const stringErrors: Record<string, string> = {};
+      if (errors) {
+        Object.entries(errors).forEach(([key, value]) => {
+          if (value) {
+            stringErrors[key] = Array.isArray(value) ? value[0] : String(value);
+          }
+        });
+      }
+      setValidationErrors(stringErrors);
     } else {
       setValidationErrors({});
     }
@@ -142,31 +186,31 @@ export default function NewBikePage() {
       // Check if image section should be marked as completed
       const isValid = mainImages.length > 0;
       if (isValid) {
-        setSectionCompletionStatus(prev => ({
+        setSectionCompletionStatus((prev) => ({
           ...prev,
-          [activeSection]: true
+          [activeSection]: true,
         }));
       } else {
-        setSectionCompletionStatus(prev => ({
+        setSectionCompletionStatus((prev) => ({
           ...prev,
-          [activeSection]: false
+          [activeSection]: false,
         }));
       }
       return;
     }
-    
+
     // For other sections, use the existing logic
     if (formState[activeSection]) {
       const timer = setTimeout(() => {
         const isValid = validateCurrentSection();
         if (isValid) {
-          setSectionCompletionStatus(prev => ({
+          setSectionCompletionStatus((prev) => ({
             ...prev,
-            [activeSection]: true
+            [activeSection]: true,
           }));
         }
       }, 500);
-      
+
       return () => clearTimeout(timer);
     }
   }, [formState, activeSection, validateCurrentSection, mainImages]);
@@ -174,7 +218,9 @@ export default function NewBikePage() {
   // Section navigation handlers
   const handleNextSection = useCallback(() => {
     if (validateCurrentSection()) {
-      const currentIndex = BIKE_SECTIONS.findIndex(section => section.id === activeSection);
+      const currentIndex = BIKE_SECTIONS.findIndex(
+        (section) => section.id === activeSection
+      );
       if (currentIndex < BIKE_SECTIONS.length - 1) {
         setActiveSection(BIKE_SECTIONS[currentIndex + 1].id);
       }
@@ -184,7 +230,9 @@ export default function NewBikePage() {
   }, [activeSection, validateCurrentSection]);
 
   const handlePreviousSection = useCallback(() => {
-    const currentIndex = BIKE_SECTIONS.findIndex(section => section.id === activeSection);
+    const currentIndex = BIKE_SECTIONS.findIndex(
+      (section) => section.id === activeSection
+    );
     if (currentIndex > 0) {
       setActiveSection(BIKE_SECTIONS[currentIndex - 1].id);
     }
@@ -195,30 +243,30 @@ export default function NewBikePage() {
     e.preventDefault();
     setIsSubmitting(true);
     setError("");
-    
+
     try {
       // Similar validation as car form...
       // ...
-      
+
       // Prepare form data
       const formData = new FormData();
       formData.append("vehicleType", "bikes");
-      
+
       // Add form state as JSON
       Object.entries(formState).forEach(([section, data]) => {
         formData.append(section, JSON.stringify(data));
       });
-      
+
       // Add images
       if (mainImages.length === 0) {
         formData.append("mainImages", "/placeholder.svg");
       } else {
         mainImages.forEach((img) => formData.append("mainImages", img));
       }
-      
+
       colorImages.forEach((img) => formData.append("colorImages", img));
       galleryImages.forEach((img) => formData.append("galleryImages", img));
-      
+
       // Submit data
       await vehicleService.createVehicle(formData);
       toast.success("Bike created successfully");
@@ -226,7 +274,9 @@ export default function NewBikePage() {
       router.push("/brands/dashboard");
     } catch (error) {
       console.error("Form submission error:", error);
-      toast.error(error instanceof Error ? error.message : "Failed to create vehicle");
+      toast.error(
+        error instanceof Error ? error.message : "Failed to create vehicle"
+      );
       setError(error instanceof Error ? error.message : "An error occurred");
     } finally {
       setIsSubmitting(false);
@@ -251,16 +301,22 @@ export default function NewBikePage() {
               <select
                 name="brand"
                 value={formState.basicInfo?.brand || ""}
-                onChange={(e) => handleFieldChange("basicInfo", "brand", e.target.value)}
+                onChange={(e) =>
+                  handleFieldChange("basicInfo", "brand", e.target.value)
+                }
                 className="mt-1 block w-full rounded border border-input bg-background text-foreground px-3 py-2"
               >
                 <option value="">Select Brand</option>
                 {BIKE_BRANDS.map((brand) => (
-                  <option key={brand} value={brand}>{brand}</option>
+                  <option key={brand} value={brand}>
+                    {brand}
+                  </option>
                 ))}
               </select>
               {validationErrors["brand"] && (
-                <p className="text-xs text-destructive mt-1">{validationErrors["brand"]}</p>
+                <p className="text-xs text-destructive mt-1">
+                  {validationErrors["brand"]}
+                </p>
               )}
             </FormField>
 
@@ -269,11 +325,33 @@ export default function NewBikePage() {
                 name="name"
                 placeholder={BIKE_PLACEHOLDERS.name}
                 value={formState.basicInfo?.name || ""}
-                onChange={(e) => handleFieldChange("basicInfo", "name", e.target.value)}
+                onChange={(e) =>
+                  handleFieldChange("basicInfo", "name", e.target.value)
+                }
               />
               {validationErrors["name"] && (
-                <p className="text-xs text-destructive mt-1">{validationErrors["name"]}</p>
+                <p className="text-xs text-destructive mt-1">
+                  {validationErrors["name"]}
+                </p>
               )}
+            </FormField>
+
+            <FormField label="Bike Type">
+              <select
+                name="bikeType"
+                value={formState.basicInfo?.bikeType || ""}
+                onChange={(e) =>
+                  handleFieldChange("basicInfo", "bikeType", e.target.value)
+                }
+                className="mt-1 block w-full rounded border border-input bg-background text-foreground px-3 py-2"
+              >
+                <option value="">Select Bike Type</option>
+                {BIKE_TYPES.map((type) => (
+                  <option key={type} value={type}>
+                    {type}
+                  </option>
+                ))}
+              </select>
             </FormField>
 
             <FormField label="Ex-Showroom Price (₹)" required>
@@ -282,12 +360,20 @@ export default function NewBikePage() {
                 type="number"
                 placeholder={BIKE_PLACEHOLDERS.priceExshowroom}
                 value={formState.basicInfo?.priceExshowroom || ""}
-                onChange={(e) => handleFieldChange("basicInfo", "priceExshowroom", e.target.value)}
+                onChange={(e) =>
+                  handleFieldChange(
+                    "basicInfo",
+                    "priceExshowroom",
+                    e.target.value
+                  )
+                }
                 min="0"
                 step="1000"
               />
               {validationErrors["priceExshowroom"] && (
-                <p className="text-xs text-destructive mt-1">{validationErrors["priceExshowroom"]}</p>
+                <p className="text-xs text-destructive mt-1">
+                  {validationErrors["priceExshowroom"]}
+                </p>
               )}
             </FormField>
 
@@ -297,12 +383,16 @@ export default function NewBikePage() {
                 type="number"
                 placeholder={BIKE_PLACEHOLDERS.priceOnroad}
                 value={formState.basicInfo?.priceOnroad || ""}
-                onChange={(e) => handleFieldChange("basicInfo", "priceOnroad", e.target.value)}
+                onChange={(e) =>
+                  handleFieldChange("basicInfo", "priceOnroad", e.target.value)
+                }
                 min="0"
                 step="1000"
               />
               {validationErrors["priceOnroad"] && (
-                <p className="text-xs text-destructive mt-1">{validationErrors["priceOnroad"]}</p>
+                <p className="text-xs text-destructive mt-1">
+                  {validationErrors["priceOnroad"]}
+                </p>
               )}
             </FormField>
 
@@ -310,11 +400,15 @@ export default function NewBikePage() {
               <select
                 name="variant"
                 value={formState.basicInfo?.variant || "Base"}
-                onChange={(e) => handleFieldChange("basicInfo", "variant", e.target.value)}
+                onChange={(e) =>
+                  handleFieldChange("basicInfo", "variant", e.target.value)
+                }
                 className="mt-1 block w-full rounded border border-input bg-background text-foreground px-3 py-2"
               >
                 {["Base", "Mid", "Top"].map((variant) => (
-                  <option key={variant} value={variant}>{variant}</option>
+                  <option key={variant} value={variant}>
+                    {variant}
+                  </option>
                 ))}
               </select>
             </FormField>
@@ -325,9 +419,13 @@ export default function NewBikePage() {
                   name="pros"
                   placeholder={BIKE_PLACEHOLDERS.pros}
                   value={formState.basicInfo?.pros || ""}
-                  onChange={(e) => handleFieldChange("basicInfo", "pros", e.target.value)}
+                  onChange={(e) =>
+                    handleFieldChange("basicInfo", "pros", e.target.value)
+                  }
                 />
-                <p className="text-xs text-muted-foreground mt-1">Enter each point on a new line</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Enter each point on a new line
+                </p>
               </FormField>
             </div>
 
@@ -337,9 +435,13 @@ export default function NewBikePage() {
                   name="cons"
                   placeholder={BIKE_PLACEHOLDERS.cons}
                   value={formState.basicInfo?.cons || ""}
-                  onChange={(e) => handleFieldChange("basicInfo", "cons", e.target.value)}
+                  onChange={(e) =>
+                    handleFieldChange("basicInfo", "cons", e.target.value)
+                  }
                 />
-                <p className="text-xs text-muted-foreground mt-1">Enter each point on a new line</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Enter each point on a new line
+                </p>
               </FormField>
             </div>
           </div>
@@ -359,7 +461,9 @@ export default function NewBikePage() {
                   acceptedFileTypes="image/png, image/jpeg, image/webp"
                   defaultSelected={true} // Set default selected to true
                 />
-                <p className="text-xs text-muted-foreground mt-1">This image will appear as the main display image</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  This image will appear as the main display image
+                </p>
               </FormField>
             </div>
 
@@ -374,7 +478,9 @@ export default function NewBikePage() {
                   acceptedFileTypes="image/png, image/jpeg, image/webp"
                   defaultSelected={true} // Set default selected to true
                 />
-                <p className="text-xs text-muted-foreground mt-1">Upload up to 8 images showcasing the bike</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Upload up to 8 images showcasing the bike
+                </p>
               </FormField>
             </div>
 
@@ -389,7 +495,9 @@ export default function NewBikePage() {
                   acceptedFileTypes="image/png, image/jpeg, image/webp"
                   defaultSelected={true} // Set default selected to true
                 />
-                <p className="text-xs text-muted-foreground mt-1">Upload images of different color options available</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Upload images of different color options available
+                </p>
               </FormField>
             </div>
           </div>
@@ -403,13 +511,21 @@ export default function NewBikePage() {
                 name="engineType"
                 placeholder="Single Cylinder, Liquid Cooled, DOHC, FI Engine"
                 value={formState.engineTransmission?.engineType || ""}
-                onChange={(e) => handleFieldChange("engineTransmission", "engineType", e.target.value)}
+                onChange={(e) =>
+                  handleFieldChange(
+                    "engineTransmission",
+                    "engineType",
+                    e.target.value
+                  )
+                }
               />
               {validationErrors["engineType"] && (
-                <p className="text-xs text-destructive mt-1">{validationErrors["engineType"]}</p>
+                <p className="text-xs text-destructive mt-1">
+                  {validationErrors["engineType"]}
+                </p>
               )}
             </FormField>
-            
+
             <FormField label="Displacement (cc)">
               <PlaceholderInput
                 name="displacement"
@@ -417,82 +533,134 @@ export default function NewBikePage() {
                 type="number"
                 step="0.01"
                 value={formState.engineTransmission?.displacement || ""}
-                onChange={(e) => handleFieldChange("engineTransmission", "displacement", e.target.value)}
+                onChange={(e) =>
+                  handleFieldChange(
+                    "engineTransmission",
+                    "displacement",
+                    e.target.value
+                  )
+                }
               />
             </FormField>
-            
+
             <FormField label="Max Power" required>
               <PlaceholderInput
                 name="maxPower"
                 placeholder="46 PS @ 8500 rpm"
                 value={formState.engineTransmission?.maxPower || ""}
-                onChange={(e) => handleFieldChange("engineTransmission", "maxPower", e.target.value)}
+                onChange={(e) =>
+                  handleFieldChange(
+                    "engineTransmission",
+                    "maxPower",
+                    e.target.value
+                  )
+                }
               />
               {validationErrors["maxPower"] && (
-                <p className="text-xs text-destructive mt-1">{validationErrors["maxPower"]}</p>
+                <p className="text-xs text-destructive mt-1">
+                  {validationErrors["maxPower"]}
+                </p>
               )}
             </FormField>
-            
+
             <FormField label="Max Torque" required>
               <PlaceholderInput
                 name="maxTorque"
                 placeholder="39 Nm @ 6500 rpm"
                 value={formState.engineTransmission?.maxTorque || ""}
-                onChange={(e) => handleFieldChange("engineTransmission", "maxTorque", e.target.value)}
+                onChange={(e) =>
+                  handleFieldChange(
+                    "engineTransmission",
+                    "maxTorque",
+                    e.target.value
+                  )
+                }
               />
               {validationErrors["maxTorque"] && (
-                <p className="text-xs text-destructive mt-1">{validationErrors["maxTorque"]}</p>
+                <p className="text-xs text-destructive mt-1">
+                  {validationErrors["maxTorque"]}
+                </p>
               )}
             </FormField>
-            
+
             <FormField label="No. of Cylinders">
               <PlaceholderInput
                 name="cylinders"
                 placeholder="1"
                 type="number"
                 value={formState.engineTransmission?.cylinders || ""}
-                onChange={(e) => handleFieldChange("engineTransmission", "cylinders", e.target.value)}
+                onChange={(e) =>
+                  handleFieldChange(
+                    "engineTransmission",
+                    "cylinders",
+                    e.target.value
+                  )
+                }
               />
             </FormField>
-            
+
             <FormField label="Cooling System">
               <select
                 name="coolingSystem"
                 value={formState.engineTransmission?.coolingSystem || ""}
-                onChange={(e) => handleFieldChange("engineTransmission", "coolingSystem", e.target.value)}
+                onChange={(e) =>
+                  handleFieldChange(
+                    "engineTransmission",
+                    "coolingSystem",
+                    e.target.value
+                  )
+                }
                 className="mt-1 block w-full rounded border border-input bg-background text-foreground px-3 py-2"
               >
                 <option value="">Select Cooling System</option>
                 {COOLING_SYSTEMS.map((type) => (
-                  <option key={type} value={type}>{type}</option>
+                  <option key={type} value={type}>
+                    {type}
+                  </option>
                 ))}
               </select>
             </FormField>
-            
+
             <FormField label="Starting">
               <select
                 name="startingType"
                 value={formState.engineTransmission?.startingType || ""}
-                onChange={(e) => handleFieldChange("engineTransmission", "startingType", e.target.value)}
+                onChange={(e) =>
+                  handleFieldChange(
+                    "engineTransmission",
+                    "startingType",
+                    e.target.value
+                  )
+                }
                 className="mt-1 block w-full rounded border border-input bg-background text-foreground px-3 py-2"
               >
                 <option value="">Select Starting Type</option>
                 {STARTING_TYPES.map((type) => (
-                  <option key={type} value={type}>{type}</option>
+                  <option key={type} value={type}>
+                    {type}
+                  </option>
                 ))}
               </select>
             </FormField>
-            
+
             <FormField label="Fuel Supply">
               <select
                 name="fuelSupply"
                 value={formState.engineTransmission?.fuelSupply || ""}
-                onChange={(e) => handleFieldChange("engineTransmission", "fuelSupply", e.target.value)}
+                onChange={(e) =>
+                  handleFieldChange(
+                    "engineTransmission",
+                    "fuelSupply",
+                    e.target.value
+                  )
+                }
                 className="mt-1 block w-full rounded border border-input bg-background text-foreground px-3 py-2"
               >
                 <option value="">Select Fuel Supply</option>
                 {FUEL_SUPPLY_TYPES.map((type) => (
-                  <option key={type} value={type}>{type}</option>
+                  <option key={type} value={type}>
+                    {type}
+                  </option>
                 ))}
               </select>
             </FormField>
@@ -504,16 +672,28 @@ export default function NewBikePage() {
         return (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-4">
-              {["usbChargingPort", "cruiseControl", "bodyGraphics", "stepupSeat", "passengerFootrest"].map((feature) => (
+              {[
+                "usbChargingPort",
+                "cruiseControl",
+                "bodyGraphics",
+                "stepupSeat",
+                "passengerFootrest",
+              ].map((feature) => (
                 <label key={feature} className="flex items-center space-x-3">
                   <input
                     type="checkbox"
                     name={feature}
                     checked={formState.features?.[feature] || false}
-                    onChange={(e) => handleFieldChange("features", feature, e.target.checked)}
+                    onChange={(e) =>
+                      handleFieldChange("features", feature, e.target.checked)
+                    }
                     className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
                   />
-                  <span className="text-sm text-foreground">{feature.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}</span>
+                  <span className="text-sm text-foreground">
+                    {feature
+                      .replace(/([A-Z])/g, " $1")
+                      .replace(/^./, (str) => str.toUpperCase())}
+                  </span>
                 </label>
               ))}
             </div>
@@ -535,7 +715,13 @@ export default function NewBikePage() {
                   <input
                     type="checkbox"
                     checked={formState.featuresAndSafety?.[feature] || false}
-                    onChange={(e) => handleFieldChange("featuresAndSafety", feature, e.target.checked)}
+                    onChange={(e) =>
+                      handleFieldChange(
+                        "featuresAndSafety",
+                        feature,
+                        e.target.checked
+                      )
+                    }
                     className="rounded border border-input bg-background text-primary"
                   />
                   <span className="text-sm font-medium text-foreground">
@@ -549,12 +735,20 @@ export default function NewBikePage() {
                 <select
                   name="absType"
                   value={formState.featuresAndSafety?.absType || ""}
-                  onChange={(e) => handleFieldChange("featuresAndSafety", "absType", e.target.value)}
+                  onChange={(e) =>
+                    handleFieldChange(
+                      "featuresAndSafety",
+                      "absType",
+                      e.target.value
+                    )
+                  }
                   className="mt-1 block w-full rounded border border-input bg-background text-foreground px-3 py-2"
                 >
                   <option value="">Select ABS Type</option>
                   {["Single Channel", "Dual Channel", "None"].map((type) => (
-                    <option key={type} value={type}>{type}</option>
+                    <option key={type} value={type}>
+                      {type}
+                    </option>
                   ))}
                 </select>
               </FormField>
@@ -563,7 +757,13 @@ export default function NewBikePage() {
                   name="displayType"
                   placeholder="5 Inch, TFT"
                   value={formState.featuresAndSafety?.displayType || ""}
-                  onChange={(e) => handleFieldChange("featuresAndSafety", "displayType", e.target.value)}
+                  onChange={(e) =>
+                    handleFieldChange(
+                      "featuresAndSafety",
+                      "displayType",
+                      e.target.value
+                    )
+                  }
                 />
               </FormField>
             </div>
@@ -580,7 +780,13 @@ export default function NewBikePage() {
                 type="number"
                 step="0.1"
                 value={formState.mileageAndPerformance?.overallMileage || ""}
-                onChange={(e) => handleFieldChange("mileageAndPerformance", "overallMileage", e.target.value)}
+                onChange={(e) =>
+                  handleFieldChange(
+                    "mileageAndPerformance",
+                    "overallMileage",
+                    e.target.value
+                  )
+                }
               />
             </FormField>
             <FormField label="Top Speed (kmph)">
@@ -589,7 +795,13 @@ export default function NewBikePage() {
                 placeholder="167"
                 type="number"
                 value={formState.mileageAndPerformance?.topSpeed || ""}
-                onChange={(e) => handleFieldChange("mileageAndPerformance", "topSpeed", e.target.value)}
+                onChange={(e) =>
+                  handleFieldChange(
+                    "mileageAndPerformance",
+                    "topSpeed",
+                    e.target.value
+                  )
+                }
               />
             </FormField>
             <FormField label="0-100 kmph">
@@ -599,9 +811,17 @@ export default function NewBikePage() {
                 type="number"
                 step="0.1"
                 value={formState.mileageAndPerformance?.acceleration || ""}
-                onChange={(e) => handleFieldChange("mileageAndPerformance", "acceleration", e.target.value)}
+                onChange={(e) =>
+                  handleFieldChange(
+                    "mileageAndPerformance",
+                    "acceleration",
+                    e.target.value
+                  )
+                }
               />
-              <p className="text-xs text-muted-foreground mt-1">Time in seconds</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Time in seconds
+              </p>
             </FormField>
           </div>
         );
@@ -613,12 +833,20 @@ export default function NewBikePage() {
               <select
                 name="bodyType"
                 value={formState.chassisAndSuspension?.bodyType || ""}
-                onChange={(e) => handleFieldChange("chassisAndSuspension", "bodyType", e.target.value)}
+                onChange={(e) =>
+                  handleFieldChange(
+                    "chassisAndSuspension",
+                    "bodyType",
+                    e.target.value
+                  )
+                }
                 className="mt-1 block w-full rounded border border-input bg-background text-foreground px-3 py-2"
               >
                 <option value="">Select Body Type</option>
                 {BODY_TYPES.map((type) => (
-                  <option key={type} value={type}>{type}</option>
+                  <option key={type} value={type}>
+                    {type}
+                  </option>
                 ))}
               </select>
             </FormField>
@@ -627,7 +855,13 @@ export default function NewBikePage() {
                 name="frameType"
                 placeholder="Split-Trellis frame"
                 value={formState.chassisAndSuspension?.frameType || ""}
-                onChange={(e) => handleFieldChange("chassisAndSuspension", "frameType", e.target.value)}
+                onChange={(e) =>
+                  handleFieldChange(
+                    "chassisAndSuspension",
+                    "frameType",
+                    e.target.value
+                  )
+                }
               />
             </FormField>
             <FormField label="Front Suspension">
@@ -635,7 +869,13 @@ export default function NewBikePage() {
                 name="frontSuspension"
                 placeholder="USD forks, 43mm diameter"
                 value={formState.chassisAndSuspension?.frontSuspension || ""}
-                onChange={(e) => handleFieldChange("chassisAndSuspension", "frontSuspension", e.target.value)}
+                onChange={(e) =>
+                  handleFieldChange(
+                    "chassisAndSuspension",
+                    "frontSuspension",
+                    e.target.value
+                  )
+                }
               />
             </FormField>
             <FormField label="Rear Suspension">
@@ -643,7 +883,13 @@ export default function NewBikePage() {
                 name="rearSuspension"
                 placeholder="Monoshock with preload adjustment"
                 value={formState.chassisAndSuspension?.rearSuspension || ""}
-                onChange={(e) => handleFieldChange("chassisAndSuspension", "rearSuspension", e.target.value)}
+                onChange={(e) =>
+                  handleFieldChange(
+                    "chassisAndSuspension",
+                    "rearSuspension",
+                    e.target.value
+                  )
+                }
               />
             </FormField>
           </div>
@@ -659,7 +905,13 @@ export default function NewBikePage() {
                 type="number"
                 step="0.1"
                 value={formState.dimensionsAndCapacity?.fuelCapacity || ""}
-                onChange={(e) => handleFieldChange("dimensionsAndCapacity", "fuelCapacity", e.target.value)}
+                onChange={(e) =>
+                  handleFieldChange(
+                    "dimensionsAndCapacity",
+                    "fuelCapacity",
+                    e.target.value
+                  )
+                }
               />
             </FormField>
             <FormField label="Saddle Height (mm)">
@@ -668,7 +920,13 @@ export default function NewBikePage() {
                 placeholder="820"
                 type="number"
                 value={formState.dimensionsAndCapacity?.saddleHeight || ""}
-                onChange={(e) => handleFieldChange("dimensionsAndCapacity", "saddleHeight", e.target.value)}
+                onChange={(e) =>
+                  handleFieldChange(
+                    "dimensionsAndCapacity",
+                    "saddleHeight",
+                    e.target.value
+                  )
+                }
               />
             </FormField>
             <FormField label="Ground Clearance (mm)">
@@ -677,7 +935,13 @@ export default function NewBikePage() {
                 placeholder="183"
                 type="number"
                 value={formState.dimensionsAndCapacity?.groundClearance || ""}
-                onChange={(e) => handleFieldChange("dimensionsAndCapacity", "groundClearance", e.target.value)}
+                onChange={(e) =>
+                  handleFieldChange(
+                    "dimensionsAndCapacity",
+                    "groundClearance",
+                    e.target.value
+                  )
+                }
               />
             </FormField>
             <FormField label="Wheelbase (mm)">
@@ -686,7 +950,13 @@ export default function NewBikePage() {
                 placeholder="1354"
                 type="number"
                 value={formState.dimensionsAndCapacity?.wheelbase || ""}
-                onChange={(e) => handleFieldChange("dimensionsAndCapacity", "wheelbase", e.target.value)}
+                onChange={(e) =>
+                  handleFieldChange(
+                    "dimensionsAndCapacity",
+                    "wheelbase",
+                    e.target.value
+                  )
+                }
               />
             </FormField>
             <FormField label="Kerb Weight (kg)">
@@ -696,7 +966,13 @@ export default function NewBikePage() {
                 type="number"
                 step="0.1"
                 value={formState.dimensionsAndCapacity?.kerbWeight || ""}
-                onChange={(e) => handleFieldChange("dimensionsAndCapacity", "kerbWeight", e.target.value)}
+                onChange={(e) =>
+                  handleFieldChange(
+                    "dimensionsAndCapacity",
+                    "kerbWeight",
+                    e.target.value
+                  )
+                }
               />
             </FormField>
           </div>
@@ -710,12 +986,20 @@ export default function NewBikePage() {
                 <select
                   name="headlightType"
                   value={formState.electricals?.headlightType || ""}
-                  onChange={(e) => handleFieldChange("electricals", "headlightType", e.target.value)}
+                  onChange={(e) =>
+                    handleFieldChange(
+                      "electricals",
+                      "headlightType",
+                      e.target.value
+                    )
+                  }
                   className="mt-1 block w-full rounded border border-input bg-background text-foreground px-3 py-2"
                 >
                   <option value="">Select Headlight Type</option>
                   {["LED", "Halogen", "Projector", "Bulb"].map((type) => (
-                    <option key={type} value={type}>{type}</option>
+                    <option key={type} value={type}>
+                      {type}
+                    </option>
                   ))}
                 </select>
               </FormField>
@@ -723,12 +1007,20 @@ export default function NewBikePage() {
                 <select
                   name="taillightType"
                   value={formState.electricals?.taillightType || ""}
-                  onChange={(e) => handleFieldChange("electricals", "taillightType", e.target.value)}
+                  onChange={(e) =>
+                    handleFieldChange(
+                      "electricals",
+                      "taillightType",
+                      e.target.value
+                    )
+                  }
                   className="mt-1 block w-full rounded border border-input bg-background text-foreground px-3 py-2"
                 >
                   <option value="">Select Taillight Type</option>
                   {["LED", "Halogen", "Bulb"].map((type) => (
-                    <option key={type} value={type}>{type}</option>
+                    <option key={type} value={type}>
+                      {type}
+                    </option>
                   ))}
                 </select>
               </FormField>
@@ -738,13 +1030,19 @@ export default function NewBikePage() {
                 "ledTaillights",
                 "lowBatteryIndicator",
                 "lowFuelIndicator",
-                "turnSignalLamp"
+                "turnSignalLamp",
               ].map((feature) => (
                 <label key={feature} className="flex items-center space-x-2">
                   <input
                     type="checkbox"
                     checked={formState.electricals?.[feature] || false}
-                    onChange={(e) => handleFieldChange("electricals", feature, e.target.checked)}
+                    onChange={(e) =>
+                      handleFieldChange(
+                        "electricals",
+                        feature,
+                        e.target.checked
+                      )
+                    }
                     className="rounded border border-input bg-background text-primary"
                   />
                   <span className="text-sm font-medium text-foreground">
@@ -763,12 +1061,20 @@ export default function NewBikePage() {
               <select
                 name="frontBrakeType"
                 value={formState.tyresAndBrakes?.frontBrakeType || ""}
-                onChange={(e) => handleFieldChange("tyresAndBrakes", "frontBrakeType", e.target.value)}
+                onChange={(e) =>
+                  handleFieldChange(
+                    "tyresAndBrakes",
+                    "frontBrakeType",
+                    e.target.value
+                  )
+                }
                 className="mt-1 block w-full rounded border border-input bg-background text-foreground px-3 py-2"
               >
                 <option value="">Select Brake Type</option>
                 {["Disc", "Drum"].map((type) => (
-                  <option key={type} value={type}>{type}</option>
+                  <option key={type} value={type}>
+                    {type}
+                  </option>
                 ))}
               </select>
             </FormField>
@@ -776,12 +1082,20 @@ export default function NewBikePage() {
               <select
                 name="rearBrakeType"
                 value={formState.tyresAndBrakes?.rearBrakeType || ""}
-                onChange={(e) => handleFieldChange("tyresAndBrakes", "rearBrakeType", e.target.value)}
+                onChange={(e) =>
+                  handleFieldChange(
+                    "tyresAndBrakes",
+                    "rearBrakeType",
+                    e.target.value
+                  )
+                }
                 className="mt-1 block w-full rounded border border-input bg-background text-foreground px-3 py-2"
               >
                 <option value="">Select Brake Type</option>
                 {["Disc", "Drum"].map((type) => (
-                  <option key={type} value={type}>{type}</option>
+                  <option key={type} value={type}>
+                    {type}
+                  </option>
                 ))}
               </select>
             </FormField>
@@ -791,7 +1105,13 @@ export default function NewBikePage() {
                 placeholder="320"
                 type="number"
                 value={formState.tyresAndBrakes?.frontBrakeDiameter || ""}
-                onChange={(e) => handleFieldChange("tyresAndBrakes", "frontBrakeDiameter", e.target.value)}
+                onChange={(e) =>
+                  handleFieldChange(
+                    "tyresAndBrakes",
+                    "frontBrakeDiameter",
+                    e.target.value
+                  )
+                }
               />
             </FormField>
             <FormField label="Rear Brake Diameter (mm)">
@@ -800,7 +1120,13 @@ export default function NewBikePage() {
                 placeholder="240"
                 type="number"
                 value={formState.tyresAndBrakes?.rearBrakeDiameter || ""}
-                onChange={(e) => handleFieldChange("tyresAndBrakes", "rearBrakeDiameter", e.target.value)}
+                onChange={(e) =>
+                  handleFieldChange(
+                    "tyresAndBrakes",
+                    "rearBrakeDiameter",
+                    e.target.value
+                  )
+                }
               />
             </FormField>
             <FormField label="Front Tyre Size">
@@ -808,7 +1134,13 @@ export default function NewBikePage() {
                 name="frontTyreSize"
                 placeholder="110/70-17"
                 value={formState.tyresAndBrakes?.frontTyreSize || ""}
-                onChange={(e) => handleFieldChange("tyresAndBrakes", "frontTyreSize", e.target.value)}
+                onChange={(e) =>
+                  handleFieldChange(
+                    "tyresAndBrakes",
+                    "frontTyreSize",
+                    e.target.value
+                  )
+                }
               />
             </FormField>
             <FormField label="Rear Tyre Size">
@@ -816,7 +1148,13 @@ export default function NewBikePage() {
                 name="rearTyreSize"
                 placeholder="150/60-17"
                 value={formState.tyresAndBrakes?.rearTyreSize || ""}
-                onChange={(e) => handleFieldChange("tyresAndBrakes", "rearTyreSize", e.target.value)}
+                onChange={(e) =>
+                  handleFieldChange(
+                    "tyresAndBrakes",
+                    "rearTyreSize",
+                    e.target.value
+                  )
+                }
               />
             </FormField>
             <div className="md:col-span-2">
@@ -824,10 +1162,18 @@ export default function NewBikePage() {
                 <input
                   type="checkbox"
                   checked={formState.tyresAndBrakes?.tubelessTyre || false}
-                  onChange={(e) => handleFieldChange("tyresAndBrakes", "tubelessTyre", e.target.checked)}
+                  onChange={(e) =>
+                    handleFieldChange(
+                      "tyresAndBrakes",
+                      "tubelessTyre",
+                      e.target.checked
+                    )
+                  }
                   className="rounded border border-input bg-background text-primary"
                 />
-                <span className="text-sm font-medium text-foreground">Tubeless Tyre</span>
+                <span className="text-sm font-medium text-foreground">
+                  Tubeless Tyre
+                </span>
               </label>
             </div>
           </div>
@@ -841,7 +1187,13 @@ export default function NewBikePage() {
                 name="motorType"
                 placeholder="Permanent Magnet Synchronous"
                 value={formState.motorAndBattery?.motorType || ""}
-                onChange={(e) => handleFieldChange("motorAndBattery", "motorType", e.target.value)}
+                onChange={(e) =>
+                  handleFieldChange(
+                    "motorAndBattery",
+                    "motorType",
+                    e.target.value
+                  )
+                }
               />
             </FormField>
             <FormField label="Motor Power (kW)">
@@ -851,7 +1203,13 @@ export default function NewBikePage() {
                 type="number"
                 step="0.1"
                 value={formState.motorAndBattery?.motorPower || ""}
-                onChange={(e) => handleFieldChange("motorAndBattery", "motorPower", e.target.value)}
+                onChange={(e) =>
+                  handleFieldChange(
+                    "motorAndBattery",
+                    "motorPower",
+                    e.target.value
+                  )
+                }
               />
             </FormField>
             <FormField label="Battery Type">
@@ -859,7 +1217,13 @@ export default function NewBikePage() {
                 name="batteryType"
                 placeholder="Lithium-ion"
                 value={formState.motorAndBattery?.batteryType || ""}
-                onChange={(e) => handleFieldChange("motorAndBattery", "batteryType", e.target.value)}
+                onChange={(e) =>
+                  handleFieldChange(
+                    "motorAndBattery",
+                    "batteryType",
+                    e.target.value
+                  )
+                }
               />
             </FormField>
             <FormField label="Battery Capacity (kWh)">
@@ -869,7 +1233,13 @@ export default function NewBikePage() {
                 type="number"
                 step="0.1"
                 value={formState.motorAndBattery?.batteryCapacity || ""}
-                onChange={(e) => handleFieldChange("motorAndBattery", "batteryCapacity", e.target.value)}
+                onChange={(e) =>
+                  handleFieldChange(
+                    "motorAndBattery",
+                    "batteryCapacity",
+                    e.target.value
+                  )
+                }
               />
             </FormField>
             <FormField label="Charging Time (hours)">
@@ -879,7 +1249,13 @@ export default function NewBikePage() {
                 type="number"
                 step="0.1"
                 value={formState.motorAndBattery?.chargingTime || ""}
-                onChange={(e) => handleFieldChange("motorAndBattery", "chargingTime", e.target.value)}
+                onChange={(e) =>
+                  handleFieldChange(
+                    "motorAndBattery",
+                    "chargingTime",
+                    e.target.value
+                  )
+                }
               />
             </FormField>
             <FormField label="Range (km)">
@@ -888,7 +1264,9 @@ export default function NewBikePage() {
                 placeholder="120"
                 type="number"
                 value={formState.motorAndBattery?.range || ""}
-                onChange={(e) => handleFieldChange("motorAndBattery", "range", e.target.value)}
+                onChange={(e) =>
+                  handleFieldChange("motorAndBattery", "range", e.target.value)
+                }
               />
             </FormField>
           </div>
@@ -902,7 +1280,13 @@ export default function NewBikePage() {
                 name="frontFork"
                 placeholder="Telescopic, 43mm USD fork"
                 value={formState.underpinnings?.frontFork || ""}
-                onChange={(e) => handleFieldChange("underpinnings", "frontFork", e.target.value)}
+                onChange={(e) =>
+                  handleFieldChange(
+                    "underpinnings",
+                    "frontFork",
+                    e.target.value
+                  )
+                }
               />
             </FormField>
             <FormField label="Rear Monoshock">
@@ -910,7 +1294,13 @@ export default function NewBikePage() {
                 name="rearMonoshock"
                 placeholder="Monoshock with preload adjustment"
                 value={formState.underpinnings?.rearMonoshock || ""}
-                onChange={(e) => handleFieldChange("underpinnings", "rearMonoshock", e.target.value)}
+                onChange={(e) =>
+                  handleFieldChange(
+                    "underpinnings",
+                    "rearMonoshock",
+                    e.target.value
+                  )
+                }
               />
             </FormField>
             <FormField label="Swingarm">
@@ -918,7 +1308,9 @@ export default function NewBikePage() {
                 name="swingarm"
                 placeholder="Aluminum"
                 value={formState.underpinnings?.swingarm || ""}
-                onChange={(e) => handleFieldChange("underpinnings", "swingarm", e.target.value)}
+                onChange={(e) =>
+                  handleFieldChange("underpinnings", "swingarm", e.target.value)
+                }
               />
             </FormField>
             <FormField label="Chassis Type">
@@ -926,7 +1318,13 @@ export default function NewBikePage() {
                 name="chassisType"
                 placeholder="Trellis Frame"
                 value={formState.underpinnings?.chassisType || ""}
-                onChange={(e) => handleFieldChange("underpinnings", "chassisType", e.target.value)}
+                onChange={(e) =>
+                  handleFieldChange(
+                    "underpinnings",
+                    "chassisType",
+                    e.target.value
+                  )
+                }
               />
             </FormField>
           </div>
@@ -935,11 +1333,21 @@ export default function NewBikePage() {
       default:
         return (
           <div className="p-4 text-center">
-            <p className="text-muted-foreground">Please select a section to continue</p>
+            <p className="text-muted-foreground">
+              Please select a section to continue
+            </p>
           </div>
         );
     }
-  }, [activeSection, formState, handleFieldChange, validationErrors, mainImages, galleryImages, colorImages]);
+  }, [
+    activeSection,
+    formState,
+    handleFieldChange,
+    validationErrors,
+    mainImages,
+    galleryImages,
+    colorImages,
+  ]);
 
   // In the Preview mode section, add similar preview support as in the car page
   const renderPreview = () => {
@@ -948,19 +1356,24 @@ export default function NewBikePage() {
         <div className="w-full min-h-screen bg-background p-8">
           <div className="max-w-5xl mx-auto bg-card rounded-lg border p-8">
             <div className="flex justify-between items-center mb-6">
-              <h1 className="text-2xl font-bold text-foreground">Bike Preview</h1>
+              <h1 className="text-2xl font-bold text-foreground">
+                Bike Preview
+              </h1>
               <Button onClick={togglePreviewMode} variant="outline">
                 Back to Edit
               </Button>
             </div>
-            
+
             {/* BikePreview with properly passed color images */}
-            <BikePreview data={formState} images={{
-              main: mainImages[0] || "/placeholder.svg",
-              gallery: galleryImages,
-              colors: colorImages.length > 0 ? colorImages : []
-            }} />
-            
+            <BikePreview
+              data={formState}
+              images={{
+                main: mainImages[0] || "/placeholder.svg",
+                gallery: galleryImages,
+                colors: colorImages.length > 0 ? colorImages : [],
+              }}
+            />
+
             <div className="mt-8 flex justify-end">
               <Button
                 onClick={() => handleSubmit(new Event("submit") as any)}
@@ -1021,7 +1434,8 @@ export default function NewBikePage() {
               </Button>
 
               <div className="flex gap-2">
-                {activeSection === BIKE_SECTIONS[BIKE_SECTIONS.length - 1].id && (
+                {activeSection ===
+                  BIKE_SECTIONS[BIKE_SECTIONS.length - 1].id && (
                   <Button
                     type="button"
                     onClick={togglePreviewMode}
@@ -1031,7 +1445,8 @@ export default function NewBikePage() {
                   </Button>
                 )}
 
-                {activeSection === BIKE_SECTIONS[BIKE_SECTIONS.length - 1].id ? (
+                {activeSection ===
+                BIKE_SECTIONS[BIKE_SECTIONS.length - 1].id ? (
                   <Button type="submit" disabled={isSubmitting}>
                     {isSubmitting ? "Creating..." : "Create Bike"}
                   </Button>
