@@ -1,14 +1,15 @@
 // src/app/brands/vehicles/car/page.tsx
 "use client";
 
+// Add the import for vehicleService
+import { vehicleService } from "@/services/vehicleService";
 import { useRouter } from "next/navigation";
 import { MultipleImageUpload } from "@/components/ui/MultipleImageUpload";
 import { useState, useCallback, useEffect } from "react";
-import { vehicleService } from "@/services/vehicleService";
 import { toast } from "react-hot-toast";
 import { Button } from "@/components/ui/button";
 import { CarPreview } from "@/components/vehicle/CarPreview";
-import { useVehicleStore, CAR_PLACEHOLDERS } from "@/store/vehicleStore";
+import { useCarStore, useCarForm } from "@/store/useCarStore"; // Fix: import useCarForm from useCarStore
 import { validateSection, validatePrices } from "@/validation/formValidation";
 import {
   PlaceholderInput,
@@ -16,6 +17,7 @@ import {
   SectionButton,
   FormField,
 } from "@/components/form/FormComponents";
+import { VehicleFormField } from "@/components/form/VehicleFormField";
 
 // Car-specific constants
 const CAR_BRANDS = [
@@ -78,7 +80,20 @@ const CAR_SECTIONS = [
   { id: "internetFeatures", label: "Advance Internet Feature" },
 ];
 
+// Car form placeholders
+const CAR_PLACEHOLDERS = {
+  name: "New Model",
+  brand: "",
+  variant: "Base",
+  launchYear: new Date().getFullYear().toString(),
+  priceOnroad: "1000000",
+  priceExshowroom: "850000",
+  pros: "Spacious Interior\nFuel Efficient\nAdvanced Safety Features\nComfortable Ride",
+  cons: "Average Performance\nBasic Infotainment System\nLimited Color Options",
+};
+
 export default function NewCarPage() {
+  const { handleSubmit } = useCarForm();
   const router = useRouter();
   const {
     formState,
@@ -86,14 +101,17 @@ export default function NewCarPage() {
     interiorImages,
     exteriorImages,
     colorImages,
-    setVehicleType,
+    isSubmitting,
+    error,
+    updateFormSection,
     setMainImages,
     setInteriorImages,
     setExteriorImages,
     setColorImages,
-    updateFormSection,
+    setIsSubmitting,
+    setError,
     reset,
-  } = useVehicleStore();
+  } = useCarStore();
 
   const [activeSection, setActiveSection] = useState<string>(
     CAR_SECTIONS[0].id
@@ -101,17 +119,10 @@ export default function NewCarPage() {
   const [sectionCompletionStatus, setSectionCompletionStatus] = useState<
     Record<string, boolean>
   >({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string>("");
   const [validationErrors, setValidationErrors] = useState<
     Record<string, string>
   >({});
   const [previewMode, setPreviewMode] = useState(false);
-
-  // Setup initial vehicle type
-  useEffect(() => {
-    setVehicleType("cars");
-  }, [setVehicleType]);
 
   // Save form data helper
   const handleFieldChange = useCallback(
@@ -123,56 +134,152 @@ export default function NewCarPage() {
 
   // Validate current section
   const validateCurrentSection = useCallback(() => {
-    if (!formState || !formState[activeSection]) return true;
+    // Always validate required fields in basic info section
+    if (activeSection === "basicInfo") {
+      const { brand, name, priceExshowroom, priceOnroad } =
+        formState.basicInfo || {};
 
-    // Special handling for images section
-    if (activeSection === "images") {
-      // Mark as valid only if at least one main image exists
-      return mainImages.length > 0;
+      const errors: Record<string, string> = {};
+      if (!brand) errors.brand = "Brand is required";
+      if (!name) errors.name = "Name is required";
+      if (!priceExshowroom)
+        errors.priceExshowroom = "Ex-showroom price is required";
+      if (!priceOnroad) errors.priceOnroad = "On-road price is required";
+
+      if (Object.keys(errors).length > 0) {
+        setValidationErrors(errors);
+        return false;
+      }
+
+      // Also validate price relationship
+      if (priceExshowroom && priceOnroad) {
+        const priceCheck = validatePrices(priceExshowroom, priceOnroad);
+        if (!priceCheck.isValid) {
+          setValidationErrors({
+            priceExshowroom: priceCheck.error || "Price error",
+          });
+          return false;
+        }
+      }
     }
 
-    // Handle other sections as before
-    const { isValid, errors } = validateSection(
-      activeSection,
-      formState[activeSection]
-    );
+    // Special handling for images section - now images are optional
+    if (activeSection === "images") {
+      // Clear any validation errors for images
+      setValidationErrors({});
+      return true; // Always return true for images section to make it optional
+    }
 
-    // Special case for price validation in basicInfo section
-    if (
-      activeSection === "basicInfo" &&
-      isValid &&
-      formState.basicInfo?.priceExshowroom &&
-      formState.basicInfo?.priceOnroad
-    ) {
-      const priceCheck = validatePrices(
-        formState.basicInfo.priceExshowroom,
-        formState.basicInfo.priceOnroad
-      );
+    // For engineTransmission section
+    if (activeSection === "engineTransmission") {
+      const { engineType, maxPower, maxTorque } =
+        formState.engineTransmission || {};
 
-      if (!priceCheck.isValid) {
-        setValidationErrors({
-          // Use a new object instead of spreading existing errors to avoid duplicates
-          priceExshowroom: priceCheck.error ?? "",
-        });
+      const errors: Record<string, string> = {};
+      if (!engineType) errors.engineType = "Engine type is required";
+      if (!maxPower) errors.maxPower = "Maximum power is required";
+      if (!maxTorque) errors.maxTorque = "Maximum torque is required";
+
+      if (Object.keys(errors).length > 0) {
+        setValidationErrors(errors);
         return false;
       }
     }
 
-    // Only set validation errors if there are actual errors
-    if (!isValid) {
-      setValidationErrors(
-        Object.fromEntries(
-          Object.entries(errors || {}).map(([key, value]) => [
-            key,
-            value.join(", "),
-          ])
+    // For fuelPerformance section
+    if (activeSection === "fuelPerformance") {
+      const { fuelType } = formState.fuelPerformance || {};
+
+      const errors: Record<string, string> = {};
+      if (!fuelType) errors.fuelType = "Fuel type is required";
+
+      if (Object.keys(errors).length > 0) {
+        setValidationErrors(errors);
+        return false;
+      }
+    }
+
+    // If we get here and there's no data at all for this section, check if it's a required section
+    if (!formState[activeSection]) {
+      if (
+        ["basicInfo", "engineTransmission", "fuelPerformance"].includes(
+          activeSection
         )
+      ) {
+        toast.error(
+          `The ${activeSection} section has required fields that need to be filled`
+        );
+        return false;
+      }
+      setValidationErrors({});
+      return true;
+    }
+
+    // Run any additional schema-based validation from the validation module
+    const { isValid, errors } = validateSection(
+      activeSection,
+      formState[activeSection],
+      "cars"
+    );
+
+    // Handle validation errors
+    if (!isValid && errors) {
+      const formattedErrors = Object.fromEntries(
+        Object.entries(errors).map(([key, value]) => [
+          key,
+          Array.isArray(value) ? value.join(", ") : String(value),
+        ])
       );
+      setValidationErrors(formattedErrors);
+      return false;
     } else {
       setValidationErrors({});
     }
+
     return isValid;
   }, [activeSection, formState, mainImages]);
+
+  // Add a function to validate all required sections - update only required validation
+  const validateRequiredSections = useCallback(() => {
+    // Check basic info
+    const { brand, name, priceExshowroom, priceOnroad } =
+      formState.basicInfo || {};
+    if (!brand || !name || !priceExshowroom || !priceOnroad) {
+      setActiveSection("basicInfo");
+      toast.error("Please complete the Basic Information section first");
+      return false;
+    }
+
+    // Check price validation
+    const priceCheck = validatePrices(
+      formState.basicInfo?.priceExshowroom,
+      formState.basicInfo?.priceOnroad
+    );
+    if (!priceCheck.isValid) {
+      setActiveSection("basicInfo");
+      toast.error(priceCheck.error || "Price validation failed");
+      return false;
+    }
+
+    // Check engine info
+    const { engineType, maxPower, maxTorque } =
+      formState.engineTransmission || {};
+    if (!engineType || !maxPower || !maxTorque) {
+      setActiveSection("engineTransmission");
+      toast.error("Please complete the Engine & Transmission section");
+      return false;
+    }
+
+    // Check fuel info
+    const { fuelType } = formState.fuelPerformance || {};
+    if (!fuelType) {
+      setActiveSection("fuelPerformance");
+      toast.error("Please specify the fuel type");
+      return false;
+    }
+
+    return true;
+  }, [formState, setActiveSection]);
 
   // Update section completion status when section changes
   useEffect(() => {
@@ -212,7 +319,9 @@ export default function NewCarPage() {
 
   // Section navigation handlers
   const handleNextSection = useCallback(() => {
-    if (validateCurrentSection()) {
+    // Validate current section before navigating
+    const isValid = validateCurrentSection();
+    if (isValid) {
       const currentIndex = CAR_SECTIONS.findIndex(
         (section) => section.id === activeSection
       );
@@ -220,7 +329,7 @@ export default function NewCarPage() {
         setActiveSection(CAR_SECTIONS[currentIndex + 1].id);
       }
     } else {
-      toast.error("Please fix the errors in this section before continuing");
+      toast.error("Please complete all required fields before continuing");
     }
   }, [activeSection, validateCurrentSection]);
 
@@ -234,7 +343,7 @@ export default function NewCarPage() {
   }, [activeSection]);
 
   // Form submission
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmitForm = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsSubmitting(true);
     setError("");
@@ -249,7 +358,11 @@ export default function NewCarPage() {
       ];
 
       for (const section of requiredSections) {
-        const { isValid } = validateSection(section, formState[section]);
+        const { isValid } = validateSection(
+          section,
+          formState[section],
+          "cars"
+        );
         if (!isValid) {
           allValid = false;
           setActiveSection(section);
@@ -273,29 +386,49 @@ export default function NewCarPage() {
         throw new Error(priceCheck.error);
       }
 
+      console.log("Preparing form data for submission...");
       // Prepare form data
       const formData = new FormData();
       formData.append("vehicleType", "cars");
 
-      // Add form state as JSON
-      Object.entries(formState).forEach(([section, data]) => {
+      // Ensure required fields are set, especially variant
+      const updatedFormState = {
+        ...formState,
+        basicInfo: {
+          ...formState.basicInfo,
+          // Set variant to Base if not already set
+          variant: formState.basicInfo?.variant || "Base",
+        },
+      };
+
+      // Add form state as JSON with the fixed variant field
+      Object.entries(updatedFormState).forEach(([section, data]) => {
         formData.append(section, JSON.stringify(data));
       });
 
       // Add images
       if (mainImages.length === 0) {
         formData.append("mainImages", "/placeholder.svg");
+        console.log("Using placeholder image for main image");
       } else {
         mainImages.forEach((img) => formData.append("mainImages", img));
+        console.log(`Added ${mainImages.length} main images`);
       }
 
       colorImages.forEach((img) => formData.append("colorImages", img));
       interiorImages.forEach((img) => formData.append("interiorImages", img));
       exteriorImages.forEach((img) => formData.append("exteriorImages", img));
 
+      console.log("Submitting car data...");
       // Submit data
       await vehicleService.createVehicle(formData);
-      toast.success("Car created successfully");
+      toast.success(
+        `Car "${formState.basicInfo?.name || "New Car"}" created successfully!`,
+        {
+          duration: 5000, // Show for 5 seconds
+          icon: "🚗", // Add car icon for better visibility
+        }
+      );
       reset();
       router.push("/brands/dashboard");
     } catch (error) {
@@ -311,23 +444,45 @@ export default function NewCarPage() {
 
   // Toggle preview mode
   const togglePreviewMode = useCallback(() => {
+    // Add validation check before showing preview
+    const allSectionsValid = validateRequiredSections();
+    if (!allSectionsValid) {
+      toast.error("Please complete all required fields before previewing");
+      return;
+    }
+
     setPreviewMode(!previewMode);
     if (!previewMode) {
       window.scrollTo(0, 0);
     }
-  }, [previewMode]);
+  }, [previewMode, validateRequiredSections]);
 
   // Add this helper function for navigation buttons before the render
   const getNavigationButtons = () => {
     const isLastSection =
       activeSection === CAR_SECTIONS[CAR_SECTIONS.length - 1].id;
 
+    // Update the Next button implementation to explicitly prevent form submission
     const nextButton = isLastSection ? (
-      <Button type="submit" disabled={isSubmitting}>
+      <Button
+        type="submit"
+        disabled={isSubmitting}
+        onClick={(e) => {
+          if (!validateRequiredSections()) {
+            e.preventDefault();
+          }
+        }}
+      >
         {isSubmitting ? "Creating..." : "Create Car"}
       </Button>
     ) : (
-      <Button type="button" onClick={handleNextSection}>
+      <Button
+        type="button"
+        onClick={(e) => {
+          e.preventDefault(); // Explicitly prevent default form submission
+          handleNextSection();
+        }}
+      >
         Next
       </Button>
     );
@@ -346,158 +501,118 @@ export default function NewCarPage() {
     );
   };
 
-  // Render section fields - use the existing renderSectionFields function with updates
+  // Render section fields - use the existing renderSectionFields function
   const renderSectionFields = useCallback(() => {
     switch (activeSection) {
       case "basicInfo":
         return (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <FormField label="Brand Name" required>
-              <select
-                name="brand"
-                value={formState.basicInfo?.brand || ""}
-                onChange={(e) =>
-                  handleFieldChange("basicInfo", "brand", e.target.value)
-                }
-                className="mt-1 block w-full rounded border border-input bg-background text-foreground px-3 py-2"
-              >
-                <option value="">Select Brand</option>
-                {CAR_BRANDS.map((brand) => (
-                  <option key={brand} value={brand}>
-                    {brand}
-                  </option>
-                ))}
-              </select>
-              {validationErrors["brand"] && (
-                <p className="text-xs text-destructive mt-1">
-                  {validationErrors["brand"]}
-                </p>
-              )}
-            </FormField>
+            <VehicleFormField
+              section="basicInfo"
+              field="brand"
+              label="Brand Name"
+              type="select"
+              options={CAR_BRANDS}
+              required
+            />
 
-            <FormField label="Model Name" required>
-              <PlaceholderInput
-                name="name"
-                placeholder={CAR_PLACEHOLDERS.name}
-                value={formState.basicInfo?.name || ""}
-                onChange={(e) =>
-                  handleFieldChange("basicInfo", "name", e.target.value)
-                }
-              />
-              {validationErrors["name"] && (
-                <p className="text-xs text-destructive mt-1">
-                  {validationErrors["name"]}
-                </p>
-              )}
-            </FormField>
+            <VehicleFormField
+              section="basicInfo"
+              field="name"
+              label="Model Name"
+              placeholder="New Model"
+              required
+            />
 
-            <FormField label="Car Type">
-              <select
-                name="carType"
-                value={formState.basicInfo?.carType || ""}
-                onChange={(e) =>
-                  handleFieldChange("basicInfo", "carType", e.target.value)
-                }
-                className="mt-1 block w-full rounded border border-input bg-background text-foreground px-3 py-2"
-              >
-                <option value="">Select Car Type</option>
-                {CAR_TYPES.map((type) => (
-                  <option key={type} value={type}>
-                    {type}
-                  </option>
-                ))}
-              </select>
-            </FormField>
+            <VehicleFormField
+              section="basicInfo"
+              field="variantName"
+              label="Variant Name"
+              placeholder="Variant Name"
+            />
 
-            <FormField label="Ex-Showroom Price (₹)" required>
-              <PlaceholderInput
-                name="priceExshowroom"
+            {/* Add this field to ensure 'variant' is properly set */}
+            <VehicleFormField
+              section="basicInfo"
+              field="variant"
+              label="Variant Type"
+              type="select"
+              options={["Base", "Mid", "Top"]}
+              required
+            />
+
+            <VehicleFormField
+              section="basicInfo"
+              field="carType"
+              label="Car Type"
+              type="select"
+              options={CAR_TYPES}
+            />
+
+            <div className="space-y-2">
+              <VehicleFormField
+                section="basicInfo"
+                field="priceExshowroom"
+                label="Ex-Showroom Price (₹)"
                 type="number"
-                placeholder={CAR_PLACEHOLDERS.priceExshowroom}
-                value={formState.basicInfo?.priceExshowroom || ""}
-                onChange={(e) =>
-                  handleFieldChange(
-                    "basicInfo",
-                    "priceExshowroom",
-                    e.target.value
-                  )
-                }
-                min="0"
-                step="1000"
+                placeholder="850000"
+                required
               />
-              {validationErrors["priceExshowroom"] && (
-                <p className="text-xs text-destructive mt-1">
+              {validationErrors["priceExshowroom"] ? (
+                <p className="text-xs text-destructive">
                   {validationErrors["priceExshowroom"]}
                 </p>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  Ex-showroom price before taxes
+                </p>
               )}
-            </FormField>
+            </div>
 
-            <FormField label="On-Road Price (₹)" required>
-              <PlaceholderInput
-                name="priceOnroad"
+            <div className="space-y-2">
+              <VehicleFormField
+                section="basicInfo"
+                field="priceOnroad"
+                label="On-Road Price (₹)"
                 type="number"
-                placeholder={CAR_PLACEHOLDERS.priceOnroad}
-                value={formState.basicInfo?.priceOnroad || ""}
-                onChange={(e) =>
-                  handleFieldChange("basicInfo", "priceOnroad", e.target.value)
-                }
-                min="0"
-                step="1000"
+                placeholder="1000000"
+                required
               />
-              {validationErrors["priceOnroad"] && (
-                <p className="text-xs text-destructive mt-1">
+              {validationErrors["priceOnroad"] ? (
+                <p className="text-xs text-destructive">
                   {validationErrors["priceOnroad"]}
                 </p>
-              )}
-            </FormField>
-
-            <FormField label="Variant">
-              <select
-                name="variant"
-                value={formState.basicInfo?.variant || "Base"}
-                onChange={(e) =>
-                  handleFieldChange("basicInfo", "variant", e.target.value)
-                }
-                className="mt-1 block w-full rounded border border-input bg-background text-foreground px-3 py-2"
-              >
-                {["Base", "Mid", "Top"].map((variant) => (
-                  <option key={variant} value={variant}>
-                    {variant}
-                  </option>
-                ))}
-              </select>
-            </FormField>
-
-            <div className="md:col-span-2">
-              <FormField label="Pros">
-                <PlaceholderTextarea
-                  name="pros"
-                  placeholder={CAR_PLACEHOLDERS.pros}
-                  value={formState.basicInfo?.pros || ""}
-                  onChange={(e) =>
-                    handleFieldChange("basicInfo", "pros", e.target.value)
-                  }
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Enter each point on a new line
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  On-road price includes taxes, registration, and insurance
                 </p>
-              </FormField>
+              )}
             </div>
 
             <div className="md:col-span-2">
-              <FormField label="Cons">
-                <PlaceholderTextarea
-                  name="cons"
-                  placeholder={CAR_PLACEHOLDERS.cons}
-                  value={formState.basicInfo?.cons || ""}
-                  onChange={(e) =>
-                    handleFieldChange("basicInfo", "cons", e.target.value)
-                  }
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Enter each point on a new line
-                </p>
-              </FormField>
+              <VehicleFormField
+                section="basicInfo"
+                field="pros"
+                label="Pros"
+                type="textarea"
+                placeholder="Spacious Interior\nFuel Efficient\nAdvanced Safety Features\nComfortable Ride"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Enter each point on a new line
+              </p>
+            </div>
+
+            <div className="md:col-span-2">
+              <VehicleFormField
+                section="basicInfo"
+                field="cons"
+                label="Cons"
+                type="textarea"
+                placeholder="Average Performance\nBasic Infotainment System\nLimited Color Options"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Enter each point on a new line
+              </p>
             </div>
           </div>
         );
@@ -754,7 +869,7 @@ export default function NewCarPage() {
                 className="mt-1 block w-full rounded border border-input bg-background text-foreground px-3 py-2"
               >
                 <option value="">Select Drive Type</option>
-                {["2WD", "4WD", "AWD"].map((type) => (
+                {["2WD", "4WD"].map((type) => (
                   <option key={type} value={type}>
                     {type}
                   </option>
@@ -1394,7 +1509,7 @@ export default function NewCarPage() {
                   type="checkbox"
                   name="tachometer"
                   className="rounded border border-input bg-background text-primary"
-                  defaultChecked={true}
+                  checked={formState.interior?.tachometer || false}
                   onChange={(e) =>
                     handleFieldChange(
                       "interior",
@@ -1412,7 +1527,7 @@ export default function NewCarPage() {
                   type="checkbox"
                   name="gloveBox"
                   className="rounded border border-input bg-background text-primary"
-                  defaultChecked={true}
+                  checked={formState.interior?.gloveBox || false}
                   onChange={(e) =>
                     handleFieldChange("interior", "gloveBox", e.target.checked)
                   }
@@ -1426,7 +1541,7 @@ export default function NewCarPage() {
                   type="checkbox"
                   name="digitalCluster"
                   className="rounded border border-input bg-background text-primary"
-                  defaultChecked={true}
+                  checked={formState.interior?.digitalCluster || false}
                   onChange={(e) =>
                     handleFieldChange(
                       "interior",
@@ -1754,22 +1869,22 @@ export default function NewCarPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-4">
               {[
-                "antiLockBrakingSystem(ABS)",
+                "antiLockBrakingSystem", // Simplified property names without special characters
                 "brakeAssist",
                 "centralLocking",
-                "Driver Airbag",
+                "driverAirbag",
                 "childSafetyLocks",
-                "Passenger Airbag",
-                "Day & Night Rear View Mirror",
-                "Electronic Brakeforce Distribution (EBD)",
-                "Seat Belt Warning",
-                "Tyre Pressure Monitoring System (TPMS)",
-                "Engine Immobilizer",
-                "Electronic Stability Control (ESC)",
-                "Speed Sensing Auto Door Lock",
-                "ISOFIX Child Seat Mounts",
-                "Hill Descent Control",
-                "Hill Assist",
+                "passengerAirbag",
+                "dayNightRearViewMirror",
+                "electronicBrakeforceDistribution",
+                "seatBeltWarning",
+                "tyrePressureMonitoringSystem",
+                "engineImmobilizer",
+                "electronicStabilityControl",
+                "speedSensingAutoDoorLock",
+                "isofixChildSeatMounts",
+                "hillDescentControl",
+                "hillAssist",
               ].map((feature) => (
                 <label key={feature} className="flex items-center space-x-2">
                   <input
@@ -1950,13 +2065,14 @@ export default function NewCarPage() {
                   <input
                     type="checkbox"
                     checked={formState.entertainment?.[feature] || false}
-                    onChange={(e) =>
+                    onChange={(e) => {
+                      // Use the exact property name from the schema
                       handleFieldChange(
                         "entertainment",
-                        feature,
+                        feature, // Using exact key name from the schema
                         e.target.checked
-                      )
-                    }
+                      );
+                    }}
                     className="rounded border border-input bg-background text-primary"
                   />
                   <span className="text-sm font-medium text-foreground">
@@ -1966,6 +2082,7 @@ export default function NewCarPage() {
               ))}
             </div>
             <div className="space-y-4">
+              {/* Rest of the entertainment section remains unchanged */}
               <FormField label="Touchscreen Size (inch)">
                 <PlaceholderInput
                   name="touchscreenSize"
@@ -2059,13 +2176,14 @@ export default function NewCarPage() {
                   <input
                     type="checkbox"
                     checked={formState.internetFeatures?.[feature] || false}
-                    onChange={(e) =>
+                    onChange={(e) => {
+                      // Use the exact property name as defined in the schema
                       handleFieldChange(
                         "internetFeatures",
-                        feature,
+                        feature, // Using exact key name from the schema
                         e.target.checked
-                      )
-                    }
+                      );
+                    }}
                     className="rounded border border-input bg-background text-primary"
                   />
                   <span className="text-sm font-medium text-foreground">
@@ -2085,6 +2203,7 @@ export default function NewCarPage() {
               ))}
             </div>
             <div className="space-y-4">
+              {/* Rest of the internetFeatures section remains unchanged */}
               <FormField label="Connected Car App">
                 <PlaceholderInput
                   name="connectedCarApp"
@@ -2146,25 +2265,10 @@ export default function NewCarPage() {
             </Button>
           </div>
 
-          {/* Updated CarPreview with properly passed color images */}
           <CarPreview
-            data={formState}
-            images={{
-              main: mainImages[0] || "/placeholder.svg",
-              interior: interiorImages,
-              exterior: exteriorImages,
-              colors: colorImages.length > 0 ? colorImages : [],
-            }}
+            onBackToEdit={togglePreviewMode}
+            onSubmit={() => handleSubmit(new Event("submit") as any)}
           />
-
-          <div className="mt-8 flex justify-end">
-            <Button
-              onClick={() => handleSubmit(new Event("submit") as any)}
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? "Creating..." : "Create Car"}
-            </Button>
-          </div>
         </div>
       </div>
     );
@@ -2173,7 +2277,16 @@ export default function NewCarPage() {
   // Regular form view
   return (
     <div className="w-full min-h-screen bg-background p-8">
-      <form onSubmit={handleSubmit} className="max-w-full mx-auto">
+      <form
+        onSubmit={(e) => {
+          // Only submit form on explicit submit button click
+          if (activeSection !== CAR_SECTIONS[CAR_SECTIONS.length - 1].id) {
+            e.preventDefault();
+          }
+          return handleSubmitForm(e);
+        }}
+        className="max-w-full mx-auto"
+      >
         <div className="flex gap-6">
           {/* Side Panel */}
           <div className="w-64 flex-shrink-0 bg-card p-4 rounded-lg border">
@@ -2203,20 +2316,13 @@ export default function NewCarPage() {
                 disabled={activeSection === CAR_SECTIONS[0].id}
                 variant="outline"
               >
-                {" "}
-                Previous{" "}
-              </Button>{" "}
+                Previous
+              </Button>
               {getNavigationButtons()}
-            </div>{" "}
-          </div>{" "}
-        </div>{" "}
-      </form>{" "}
-      {error && (
-        <div className="mt-4 bg-destructive/10 border border-destructive text-destructive px-4 py-2 rounded">
-          {" "}
-          {error}{" "}
+            </div>
+          </div>
         </div>
-      )}{" "}
+      </form>
     </div>
   );
 }

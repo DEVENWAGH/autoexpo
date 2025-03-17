@@ -1,172 +1,103 @@
-import { useState } from 'react';
-import { CheckCircle2 } from 'lucide-react';
+import React from "react";
+import { cn } from "@/lib/utils";
 
-interface PlaceholderInputProps {
-  name: string;
-  placeholder: string;
-  value: string | number;
-  type?: string;
-  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  onBlur?: (e: React.FocusEvent<HTMLInputElement>) => void;
+interface FormFieldProps {
+  label: string;
+  children: React.ReactNode;
+  required?: boolean;
   error?: string;
-  [x: string]: any; // For additional props
+  className?: string;
 }
 
-// Custom Input with placeholder behavior - Fix duplicate errors
-export const PlaceholderInput = ({
-  name,
-  placeholder,
-  value,
-  type = "text",
-  onChange,
-  onBlur,
+export const FormField: React.FC<FormFieldProps> = ({
+  label,
+  children,
+  required = false,
   error,
-  ...props
-}: PlaceholderInputProps) => {
-  const [focused, setFocused] = useState(false);
-  const isPlaceholderShown = !value && !focused;
-  
-  const handleFocus = () => {
-    setFocused(true);
-  };
-  
-  const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
-    setFocused(false);
-    if (onBlur) onBlur(e);
-  };
-  
-  return (
-    <div className="w-full">
-      <input
-        type={type}
-        name={name}
-        value={value || ""}
-        placeholder={placeholder}
-        onChange={onChange}
-        onFocus={handleFocus}
-        onBlur={handleBlur}
-        className={`mt-1 block w-full rounded border bg-background px-3 py-2
-          ${error ? "border-destructive" : "border-input"} 
-          ${isPlaceholderShown ? "text-foreground/50" : "text-foreground"}`}
-        {...props}
-      />
-      {/* Remove error display from here - it will be shown by FormField instead */}
-    </div>
-  );
-};
+  className,
+}) => (
+  <div className={cn("space-y-2", className)}>
+    <label className="block text-sm font-medium text-foreground">
+      {label} {required && <span className="text-destructive">*</span>}
+    </label>
+    {children}
+    {error && <p className="text-xs text-destructive mt-1">{error}</p>}
+  </div>
+);
 
-interface PlaceholderTextareaProps {
-  name: string;
-  placeholder: string;
-  value: string;
-  onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
-  onBlur?: (e: React.FocusEvent<HTMLTextAreaElement>) => void;
-  error?: string;
-  rows?: number;
-  [x: string]: any; // For additional props
-}
+export const PlaceholderInput = React.forwardRef<
+  HTMLInputElement,
+  React.InputHTMLAttributes<HTMLInputElement> & { error?: boolean }
+>(({ className, error, ...props }, ref) => (
+  <input
+    ref={ref}
+    className={cn(
+      "mt-1 block w-full rounded border border-input bg-background text-foreground px-3 py-2",
+      error && "border-destructive",
+      className
+    )}
+    {...props}
+  />
+));
 
-// Custom Textarea with placeholder behavior - Fix duplicate errors
-export const PlaceholderTextarea = ({
-  name,
-  placeholder,
-  value,
-  onChange,
-  onBlur,
-  error,
-  rows = 4,
-  ...props
-}: PlaceholderTextareaProps) => {
-  const [focused, setFocused] = useState(false);
-  const isPlaceholderShown = !value && !focused;
-  
-  const handleFocus = () => {
-    setFocused(true);
-  };
-  
-  const handleBlur = (e: React.FocusEvent<HTMLTextAreaElement>) => {
-    setFocused(false);
-    if (onBlur) onBlur(e);
-  };
-  
-  return (
-    <div className="w-full">
-      <textarea
-        name={name}
-        rows={rows}
-        value={value || ""}
-        placeholder={placeholder}
-        onChange={onChange}
-        onFocus={handleFocus}
-        onBlur={handleBlur}
-        className={`mt-1 block w-full rounded bg-background border px-3 py-2
-          ${error ? "border-destructive" : "border-input"} 
-          ${isPlaceholderShown ? "text-foreground/50" : "text-foreground"}`}
-        {...props}
-      />
-      {/* Remove error display from here - it will be shown by FormField instead */}
-    </div>
-  );
-};
+PlaceholderInput.displayName = "PlaceholderInput";
+
+export const PlaceholderTextarea = React.forwardRef<
+  HTMLTextAreaElement,
+  React.TextareaHTMLAttributes<HTMLTextAreaElement> & { error?: boolean }
+>(({ className, error, ...props }, ref) => (
+  <textarea
+    ref={ref}
+    rows={4}
+    className={cn(
+      "mt-1 block w-full rounded border border-input bg-background text-foreground px-3 py-2",
+      error && "border-destructive",
+      className
+    )}
+    {...props}
+  />
+));
+
+PlaceholderTextarea.displayName = "PlaceholderTextarea";
 
 interface SectionButtonProps {
-  section: { id: string; label: string };
+  section: {
+    id: string;
+    label: string;
+  };
   active: string;
   completed?: boolean;
   onClick: (id: string) => void;
 }
 
-// Section navigation button
-export const SectionButton = ({ section, active, completed, onClick }: SectionButtonProps) => {
+export const SectionButton: React.FC<SectionButtonProps> = ({
+  section,
+  active,
+  completed,
+  onClick,
+}) => {
+  const isActive = section.id === active;
+
   return (
     <button
       type="button"
       onClick={() => onClick(section.id)}
-      className={`w-full text-left px-4 py-2 rounded flex items-center justify-between ${
-        active === section.id
-          ? "bg-primary text-primary-foreground"
-          : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-      }`}
-    >
-      <span>{section.label}</span>
-      {completed && <CheckCircle2 className="h-4 w-4 text-green-500" />}
-    </button>
-  );
-};
-
-interface FormSectionProps {
-  title?: string;
-  children: React.ReactNode;
-}
-
-// Form section wrapper
-export const FormSection = ({ title, children }: FormSectionProps) => {
-  return (
-    <div className="space-y-6">
-      {title && <h3 className="text-lg font-medium">{title}</h3>}
-      {children}
-    </div>
-  );
-};
-
-interface FormFieldProps {
-  label?: string;
-  required?: boolean;
-  error?: string;
-  children: React.ReactNode;
-}
-
-// Form field wrapper (for labels, errors, etc.)
-export const FormField = ({ label, required, error, children }: FormFieldProps) => {
-  return (
-    <div className="mb-4">
-      {label && (
-        <label className="block text-sm font-medium text-foreground mb-1">
-          {label}{" "}{required && <span className="text-destructive">*</span>}
-        </label>
+      className={cn(
+        "w-full text-left px-3 py-2 rounded text-sm transition-colors",
+        isActive
+          ? "bg-primary text-primary-foreground font-medium"
+          : "hover:bg-muted",
+        completed && !isActive && "text-green-600"
       )}
-      {children}
-      {error && <p className="text-xs text-destructive mt-1">{error}</p>}
-    </div>
+    >
+      <div className="flex items-center gap-2">
+        {completed ? (
+          <div className="h-2 w-2 rounded-full bg-green-500" />
+        ) : (
+          <div className="h-2 w-2 rounded-full bg-gray-300" />
+        )}
+        {section.label}
+      </div>
+    </button>
   );
 };

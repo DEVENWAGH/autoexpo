@@ -6,6 +6,7 @@ import { Theme } from "@radix-ui/themes";
 import { SessionProvider } from "next-auth/react";
 import { ThemeProvider } from "@/components/theme/theme-provider";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
+import { Toaster } from "react-hot-toast";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -45,6 +46,25 @@ export default function RootLayout({
                 {children}
               </div>
               <ThemeToggle />
+              <Toaster
+                position="top-center"
+                toastOptions={{
+                  success: {
+                    style: {
+                      background: "#10B981",
+                      color: "white",
+                      fontWeight: "bold",
+                    },
+                  },
+                  error: {
+                    style: {
+                      background: "#EF4444",
+                      color: "white",
+                      fontWeight: "bold",
+                    },
+                  },
+                }}
+              />
             </Theme>
           </SessionProvider>
         </ThemeProvider>

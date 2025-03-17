@@ -2,7 +2,6 @@
 
 import { Bruno_Ace } from "next/font/google";
 import Card from "@/components/card/Card";
-import { useVehicleStore } from "@/store/useVehicleStore";
 import { useTheme } from "next-themes";
 import { useState, useEffect } from "react";
 
@@ -12,7 +11,6 @@ const brunoFont = Bruno_Ace({
 });
 
 export default function GlassContainer() {
-  const { vehicles = [], toggleFavorite } = useVehicleStore();
   const { theme, resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
@@ -47,7 +45,7 @@ export default function GlassContainer() {
       <div
         className={`mt-4 w-full rounded-[40px] backdrop-blur-xl border ${containerGradient}`}
       >
-        <div className="h-full p-8">
+        {/* <div className="h-full p-8">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {vehicles && vehicles.length > 0 ? (
               vehicles.map((vehicle) => (
@@ -62,7 +60,7 @@ export default function GlassContainer() {
                 No vehicles available at the moment.
               </div>
             )}
-          </div>
+          </div> */}
           <button
             className={`mt-6 font-medium ${viewAllClass} transition duration-200 flex items-center`}
           >
@@ -81,7 +79,6 @@ export default function GlassContainer() {
             </svg>
           </button>
         </div>
-      </div>
     </section>
   );
 }

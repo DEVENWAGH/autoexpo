@@ -4,161 +4,170 @@ import React, { useState, useCallback } from "react";
 import { useDropzone } from "react-dropzone";
 import { Upload, X, Image as ImageIcon } from "lucide-react";
 import Image from "next/image";
+import { cn } from "@/lib/utils";
 
 interface MultipleImageUploadProps {
   images: string[];
   onChange: (images: string[]) => void;
   maxFiles?: number;
+  maxSize?: number;
   label?: string;
+  className?: string;
   usePlaceholder?: boolean;
   acceptedFileTypes?: string;
   defaultSelected?: boolean;
+  required?: boolean;
+  error?: boolean | string;
 }
 
 export const MultipleImageUpload: React.FC<MultipleImageUploadProps> = ({
   images,
   onChange,
   maxFiles = 5,
+  maxSize = 5 * 1024 * 1024, // 5MB
   label = "Upload Images",
+  className = "",
   usePlaceholder = false,
-  acceptedFileTypes = "image/jpeg, image/png, image/webp",
+  acceptedFileTypes = "image/*",
   defaultSelected = false,
+  required = false,
+  error = false,
 }) => {
-  const [isUploading, setIsUploading] = useState(false);
+  const [placeholderSelected, setPlaceholderSelected] =
+    useState(defaultSelected);
 
-  // Handle file drop
   const onDrop = useCallback(
-    async (acceptedFiles: File[]) => {
-      // Limit the number of files
-      const filesToProcess = acceptedFiles.slice(0, maxFiles - images.length);
+    (acceptedFiles: File[]) => {
+      const newFiles = acceptedFiles.slice(0, maxFiles - images.length);
+      setPlaceholderSelected(false);
 
-      if (filesToProcess.length === 0) return;
+      // Convert Files to data URLs
+      newFiles.forEach((file) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          if (e.target?.result) {
+            // Here we're getting a data URL, but we'll use it as is and let the API handle it
+            const dataUrl = e.target.result as string;
 
-      setIsUploading(true);
-
-      try {
-        // Convert files to Data URLs
-        const newImages = await Promise.all(
-          filesToProcess.map((file) => {
-            return new Promise<string>((resolve) => {
-              const reader = new FileReader();
-              reader.onloadend = () => {
-                resolve(reader.result as string);
-              };
-              reader.readAsDataURL(file);
-            });
-          })
-        );
-
-        // Update the state with new images
-        onChange([...images, ...newImages]);
-      } catch (error) {
-        console.error("Error uploading images:", error);
-      } finally {
-        setIsUploading(false);
-      }
+            // Call the upload API to convert data URL to ImageKit URL immediately
+            fetch("/api/imagekit/upload", {
+              method: "POST",
+              body: (() => {
+                const fd = new FormData();
+                fd.append("file", dataUrl);
+                fd.append("folder", "/vehicles");
+                return fd;
+              })(),
+            })
+              .then((response) => response.json())
+              .then((data) => {
+                if (data.success) {
+                  onChange([...images, data.url]);
+                } else {
+                  console.error("Upload failed:", data.error);
+                }
+              })
+              .catch((error) => {
+                console.error("Error uploading image:", error);
+              });
+          }
+        };
+        reader.readAsDataURL(file);
+      });
     },
     [images, maxFiles, onChange]
   );
 
-  // Configure dropzone
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
-    accept: acceptedFileTypes
-      ? { "image/*": [".jpeg", ".jpg", ".png", ".webp"] }
-      : undefined,
-    maxFiles: Math.max(0, maxFiles - images.length),
-    disabled: images.length >= maxFiles || isUploading,
+    maxFiles,
+    maxSize,
+    accept: {
+      [acceptedFileTypes]: [],
+    },
   });
 
-  // Remove an image
-  const removeImage = useCallback(
-    (index: number) => {
-      // Create a new array without the removed image
-      const updatedImages = images.filter((_, i) => i !== index);
-      onChange(updatedImages);
-    },
-    [images, onChange]
-  );
+  const removeImage = (index: number) => {
+    const newImages = [...images];
+    newImages.splice(index, 1);
+    onChange(newImages);
+  };
+
+  const selectPlaceholder = () => {
+    if (usePlaceholder) {
+      setPlaceholderSelected(true);
+      onChange(["/placeholder.svg"]);
+    }
+  };
 
   return (
     <div className="space-y-4">
-      {/* Dropzone */}
       <div
         {...getRootProps()}
-        className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors
-          ${
-            isDragActive
-              ? "border-primary bg-primary/10"
-              : "border-gray-300 hover:border-primary"
-          }
-          ${
-            images.length >= maxFiles || isUploading
-              ? "opacity-60 cursor-not-allowed"
-              : ""
-          }`}
+        className={cn(
+          "border-2 border-dashed rounded-md p-4 text-center cursor-pointer hover:bg-muted/50 transition-colors",
+          isDragActive ? "border-primary bg-primary/5" : "border-gray-300",
+          error ? "border-destructive" : "",
+          className
+        )}
       >
-        <input
-          {...getInputProps()}
-          disabled={images.length >= maxFiles || isUploading}
-        />
-
-        <div className="flex flex-col items-center justify-center space-y-2 text-gray-500">
-          <Upload className="h-8 w-8" />
-          <p className="text-sm font-medium">
-            {isDragActive
-              ? "Drop the images here..."
-              : images.length >= maxFiles
-              ? `Maximum of ${maxFiles} images reached`
-              : `Click or drag to upload ${label}`}
+        <input {...getInputProps()} />
+        <div className="flex flex-col items-center justify-center gap-2 p-4">
+          <Upload className="h-8 w-8 text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">
+            Drag & drop images here, or click to select files
           </p>
-          <p className="text-xs">
-            {images.length < maxFiles &&
-              !isUploading &&
-              `${images.length} of ${maxFiles} images uploaded`}
-            {isUploading && "Uploading..."}
-          </p>
+          <span className="text-xs text-muted-foreground">
+            {`Max ${maxFiles} files, up to ${Math.round(
+              maxSize / 1024 / 1024
+            )}MB each`}
+            {required && <span className="text-destructive ml-1">*</span>}
+          </span>
+          {typeof error === "string" && (
+            <p className="text-xs text-destructive mt-1">{error}</p>
+          )}
         </div>
       </div>
 
-      {/* Image preview area */}
+      {usePlaceholder && (
+        <div className="flex justify-start">
+          <button
+            type="button"
+            onClick={selectPlaceholder}
+            className={cn(
+              "text-xs px-3 py-1 rounded-md",
+              placeholderSelected
+                ? "bg-primary text-primary-foreground"
+                : "bg-secondary text-secondary-foreground"
+            )}
+          >
+            Use Default Image
+          </button>
+        </div>
+      )}
+
       {images.length > 0 && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-4">
           {images.map((image, index) => (
-            <div key={index} className="relative group">
-              <div className="aspect-square relative rounded-md overflow-hidden border">
-                <Image
-                  src={image}
-                  alt={`Uploaded image ${index + 1}`}
-                  fill
-                  className="object-cover"
-                />
-              </div>
+            <div
+              key={index}
+              className="relative aspect-square rounded-md overflow-hidden border border-border"
+            >
+              <Image
+                src={image}
+                alt={`Uploaded image ${index + 1}`}
+                fill
+                className="object-cover"
+              />
               <button
                 type="button"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  removeImage(index);
-                }}
-                className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 
-                           shadow hover:bg-red-600 transition-colors"
-                aria-label="Remove image"
+                onClick={() => removeImage(index)}
+                className="absolute top-1 right-1 bg-background/80 rounded-full p-1 hover:bg-destructive hover:text-destructive-foreground"
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
           ))}
-        </div>
-      )}
-
-      {/* No images + placeholder option */}
-      {images.length === 0 && usePlaceholder && defaultSelected && (
-        <div className="flex items-center justify-center p-4 border rounded-md">
-          <div className="flex items-center justify-center space-x-2 text-gray-400">
-            <ImageIcon className="h-6 w-6" />
-            <span>No images selected, a placeholder will be used</span>
-          </div>
         </div>
       )}
     </div>

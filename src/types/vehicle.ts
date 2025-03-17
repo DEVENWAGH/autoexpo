@@ -57,6 +57,7 @@ export interface BasicVehicleInfo {
   name: string;
   priceExshowroom: string;
   priceOnroad: string;
+  variantName?: string; // Add this line
   variant?: string;
   launchYear?: string;
   pros?: string;

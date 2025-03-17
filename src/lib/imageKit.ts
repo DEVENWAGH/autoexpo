@@ -21,10 +21,13 @@ const initImageKit = () => {
     return null;
   }
 
+  // Configure ImageKit with urlEndpointTransformation set to false to prevent
+  // automatic query parameter addition
   return new ImageKit({
     publicKey: process.env.NEXT_PUBLIC_IMAGEKIT_PUBLIC_KEY,
     privateKey: process.env.IMAGEKIT_PRIVATE_KEY,
-    urlEndpoint: process.env.NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT
+    urlEndpoint: process.env.NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT,
+    transformationPosition: "path" // Use path-based transformations rather than query params
   });
 };
 

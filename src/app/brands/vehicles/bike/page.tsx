@@ -3,7 +3,6 @@
 import { useRouter } from "next/navigation";
 import { MultipleImageUpload } from "@/components/ui/MultipleImageUpload";
 import { useState, useCallback, useEffect } from "react";
-import { vehicleService } from "@/services/vehicleService";
 import { toast } from "react-hot-toast";
 import { Button } from "@/components/ui/button";
 import { BikePreview } from "@/components/vehicle/BikePreview";
@@ -126,56 +125,96 @@ export default function NewBikePage() {
     [updateFormSection]
   );
 
-  // Validate current section - fixing type issues
+  // Validate current section - update to make images optional
   const validateCurrentSection = useCallback(() => {
-    if (!formState?.[activeSection]) return true;
+    // Always validate required fields in basic info section
+    if (activeSection === "basicInfo") {
+      const { brand, name, priceExshowroom, priceOnroad } =
+        formState.basicInfo || {};
 
-    // Special handling for images section
-    if (activeSection === "images") {
-      // Mark as valid only if at least one main image exists
-      return mainImages.length > 0;
+      const errors: Record<string, string> = {};
+      if (!brand) errors.brand = "Brand is required";
+      if (!name) errors.name = "Name is required";
+      if (!priceExshowroom)
+        errors.priceExshowroom = "Ex-showroom price is required";
+      if (!priceOnroad) errors.priceOnroad = "On-road price is required";
+
+      if (Object.keys(errors).length > 0) {
+        setValidationErrors(errors);
+        toast.error("Please fill all required fields marked with *");
+        return false;
+      }
+
+      // Also validate price relationship
+      if (priceExshowroom && priceOnroad) {
+        const priceCheck = validatePrices(priceExshowroom, priceOnroad);
+        if (!priceCheck.isValid) {
+          setValidationErrors({
+            priceExshowroom: priceCheck.error || "Price error",
+          });
+          toast.error(priceCheck.error || "Price validation failed");
+          return false;
+        }
+      }
     }
 
-    const { isValid, errors } = validateSection(
-      activeSection,
-      formState[activeSection] || {}
-    );
+    // Special handling for images section - make it optional
+    if (activeSection === "images") {
+      // Clear any validation errors
+      setValidationErrors({});
+      return true; // Always return true for images section
+    }
 
-    // Special case for price validation in basicInfo section - only run if basic validation passes
-    if (
-      activeSection === "basicInfo" &&
-      isValid &&
-      formState.basicInfo?.priceExshowroom &&
-      formState.basicInfo?.priceOnroad
-    ) {
-      const priceCheck = validatePrices(
-        formState.basicInfo.priceExshowroom,
-        formState.basicInfo.priceOnroad
-      );
+    // For engineTransmission section
+    if (activeSection === "engineTransmission") {
+      const { engineType, maxPower, maxTorque } =
+        formState.engineTransmission || {};
 
-      if (!priceCheck.isValid) {
-        setValidationErrors({
-          priceExshowroom: priceCheck.error ?? "Price error",
-        });
+      const errors: Record<string, string> = {};
+      if (!engineType) errors.engineType = "Engine type is required";
+      if (!maxPower) errors.maxPower = "Maximum power is required";
+      if (!maxTorque) errors.maxTorque = "Maximum torque is required";
+
+      if (Object.keys(errors).length > 0) {
+        setValidationErrors(errors);
+        toast.error(
+          "Please fill all required fields in Engine & Transmission section"
+        );
         return false;
       }
     }
 
-    // Only set validation errors if there are actual errors
-    if (!isValid) {
-      // Convert errors to proper Record<string, string> format
-      const stringErrors: Record<string, string> = {};
-      if (errors) {
-        Object.entries(errors).forEach(([key, value]) => {
-          if (value) {
-            stringErrors[key] = Array.isArray(value) ? value[0] : String(value);
-          }
-        });
+    // If we're here and there's no data for the section, check if it's a required section
+    if (!formState[activeSection]) {
+      if (["basicInfo", "engineTransmission"].includes(activeSection)) {
+        toast.error(
+          `The ${activeSection} section has required fields that need to be filled`
+        );
+        return false;
       }
+      setValidationErrors({});
+      return true;
+    }
+
+    // Run any schema-based validation
+    const { isValid, errors } = validateSection(
+      activeSection,
+      formState[activeSection] || {},
+      "bikes"
+    );
+
+    if (!isValid && errors) {
+      const stringErrors: Record<string, string> = {};
+      Object.entries(errors).forEach(([key, value]) => {
+        stringErrors[key] = Array.isArray(value) ? value[0] : String(value);
+      });
       setValidationErrors(stringErrors);
+      toast.error("Please correct the validation errors before continuing");
+      return false;
     } else {
       setValidationErrors({});
     }
+
     return isValid;
   }, [activeSection, formState, mainImages]);
 
@@ -217,16 +256,17 @@ export default function NewBikePage() {
 
   // Section navigation handlers
   const handleNextSection = useCallback(() => {
-    if (validateCurrentSection()) {
+    // Validate current section before navigating
+    const isValid = validateCurrentSection();
+    if (isValid) {
       const currentIndex = BIKE_SECTIONS.findIndex(
         (section) => section.id === activeSection
       );
       if (currentIndex < BIKE_SECTIONS.length - 1) {
         setActiveSection(BIKE_SECTIONS[currentIndex + 1].id);
       }
-    } else {
-      toast.error("Please fix the errors in this section before continuing");
     }
+    // Note: We no longer need the else block with toast.error since it's now handled in validateCurrentSection
   }, [activeSection, validateCurrentSection]);
 
   const handlePreviousSection = useCallback(() => {
@@ -241,13 +281,17 @@ export default function NewBikePage() {
   // Form submission
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
+    // Validate all required sections before submission
+    if (!validateRequiredSections()) {
+      return;
+    }
+
     setIsSubmitting(true);
     setError("");
 
     try {
-      // Similar validation as car form...
-      // ...
-
+      console.log("Preparing bike form data for submission...");
       // Prepare form data
       const formData = new FormData();
       formData.append("vehicleType", "bikes");
@@ -260,16 +304,27 @@ export default function NewBikePage() {
       // Add images
       if (mainImages.length === 0) {
         formData.append("mainImages", "/placeholder.svg");
+        console.log("Using placeholder image for main image");
       } else {
         mainImages.forEach((img) => formData.append("mainImages", img));
+        console.log(`Added ${mainImages.length} main images`);
       }
 
       colorImages.forEach((img) => formData.append("colorImages", img));
       galleryImages.forEach((img) => formData.append("galleryImages", img));
 
       // Submit data
+      console.log("Submitting bike data...");
       await vehicleService.createVehicle(formData);
-      toast.success("Bike created successfully");
+      toast.success(
+        `Bike "${
+          formState.basicInfo?.name || "New Bike"
+        }" created successfully!`,
+        {
+          duration: 5000, // Show for 5 seconds
+          icon: "🏍️", // Add bike icon for better visibility
+        }
+      );
       reset();
       router.push("/brands/dashboard");
     } catch (error) {
@@ -283,13 +338,50 @@ export default function NewBikePage() {
     }
   };
 
-  // Toggle preview mode
+  // Toggle preview mode with validation
   const togglePreviewMode = useCallback(() => {
+    // Add validation check before showing preview
+    const allSectionsValid = validateRequiredSections();
+    if (!allSectionsValid) {
+      toast.error("Please complete all required fields before previewing");
+      return;
+    }
+
     setPreviewMode(!previewMode);
     if (!previewMode) {
       window.scrollTo(0, 0);
     }
-  }, [previewMode]);
+  }, [previewMode, validateRequiredSections]);
+
+  // Add a function to validate all required sections
+  const validateRequiredSections = useCallback(() => {
+    // Check basic info
+    const { brand, name, priceExshowroom, priceOnroad } =
+      formState.basicInfo || {};
+    if (!brand || !name || !priceExshowroom || !priceOnroad) {
+      setActiveSection("basicInfo");
+      toast.error("Please complete the Basic Information section first");
+      return false;
+    }
+
+    // Check images
+    if (mainImages.length === 0) {
+      setActiveSection("images");
+      toast.error("Please upload at least one main image");
+      return false;
+    }
+
+    // Check engine info
+    const { engineType, maxPower, maxTorque } =
+      formState.engineTransmission || {};
+    if (!engineType || !maxPower || !maxTorque) {
+      setActiveSection("engineTransmission");
+      toast.error("Please complete the Engine & Transmission section");
+      return false;
+    }
+
+    return true;
+  }, [formState, mainImages, setActiveSection]);
 
   // Render section fields based on the active section - adapt from existing components
   const renderSectionFields = useCallback(() => {
@@ -336,6 +428,22 @@ export default function NewBikePage() {
               )}
             </FormField>
 
+            <FormField label="Variant Name" required>
+              <PlaceholderInput
+                name="variantName"
+                placeholder="Variant Name"
+                value={formState.basicInfo?.variantName || ""}
+                onChange={(e) =>
+                  handleFieldChange("basicInfo", "variantName", e.target.value)
+                }
+              />
+              {validationErrors["variantName"] && (
+                <p className="text-xs text-destructive mt-1">
+                  {validationErrors["variantName"]}
+                </p>
+              )}
+            </FormField>
+
             <FormField label="Bike Type">
               <select
                 name="bikeType"
@@ -354,47 +462,63 @@ export default function NewBikePage() {
               </select>
             </FormField>
 
-            <FormField label="Ex-Showroom Price (₹)" required>
-              <PlaceholderInput
-                name="priceExshowroom"
-                type="number"
-                placeholder={BIKE_PLACEHOLDERS.priceExshowroom}
-                value={formState.basicInfo?.priceExshowroom || ""}
-                onChange={(e) =>
-                  handleFieldChange(
-                    "basicInfo",
-                    "priceExshowroom",
-                    e.target.value
-                  )
-                }
-                min="0"
-                step="1000"
-              />
-              {validationErrors["priceExshowroom"] && (
-                <p className="text-xs text-destructive mt-1">
-                  {validationErrors["priceExshowroom"]}
-                </p>
-              )}
-            </FormField>
+            <div className="space-y-2">
+              <FormField label="Ex-Showroom Price (₹)" required>
+                <PlaceholderInput
+                  name="priceExshowroom"
+                  type="number"
+                  placeholder={BIKE_PLACEHOLDERS.priceExshowroom}
+                  value={formState.basicInfo?.priceExshowroom || ""}
+                  onChange={(e) =>
+                    handleFieldChange(
+                      "basicInfo",
+                      "priceExshowroom",
+                      e.target.value
+                    )
+                  }
+                  min="0"
+                  step="1000"
+                />
+                {validationErrors["priceExshowroom"] ? (
+                  <p className="text-xs text-destructive mt-1">
+                    {validationErrors["priceExshowroom"]}
+                  </p>
+                ) : (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Ex-showroom price before taxes
+                  </p>
+                )}
+              </FormField>
+            </div>
 
-            <FormField label="On-Road Price (₹)" required>
-              <PlaceholderInput
-                name="priceOnroad"
-                type="number"
-                placeholder={BIKE_PLACEHOLDERS.priceOnroad}
-                value={formState.basicInfo?.priceOnroad || ""}
-                onChange={(e) =>
-                  handleFieldChange("basicInfo", "priceOnroad", e.target.value)
-                }
-                min="0"
-                step="1000"
-              />
-              {validationErrors["priceOnroad"] && (
-                <p className="text-xs text-destructive mt-1">
-                  {validationErrors["priceOnroad"]}
-                </p>
-              )}
-            </FormField>
+            <div className="space-y-2">
+              <FormField label="On-Road Price (₹)" required>
+                <PlaceholderInput
+                  name="priceOnroad"
+                  type="number"
+                  placeholder={BIKE_PLACEHOLDERS.priceOnroad}
+                  value={formState.basicInfo?.priceOnroad || ""}
+                  onChange={(e) =>
+                    handleFieldChange(
+                      "basicInfo",
+                      "priceOnroad",
+                      e.target.value
+                    )
+                  }
+                  min="0"
+                  step="1000"
+                />
+                {validationErrors["priceOnroad"] ? (
+                  <p className="text-xs text-destructive mt-1">
+                    {validationErrors["priceOnroad"]}
+                  </p>
+                ) : (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    On-road price includes taxes, registration, and insurance
+                  </p>
+                )}
+              </FormField>
+            </div>
 
             <FormField label="Variant">
               <select
@@ -1451,7 +1575,13 @@ export default function NewBikePage() {
                     {isSubmitting ? "Creating..." : "Create Bike"}
                   </Button>
                 ) : (
-                  <Button type="button" onClick={handleNextSection}>
+                  <Button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault(); // Explicitly prevent form submission
+                      handleNextSection();
+                    }}
+                  >
                     Next
                   </Button>
                 )}
@@ -1460,12 +1590,6 @@ export default function NewBikePage() {
           </div>
         </div>
       </form>
-
-      {error && (
-        <div className="mt-4 bg-destructive/10 border border-destructive text-destructive px-4 py-2 rounded">
-          {error}
-        </div>
-      )}
     </div>
   );
 }

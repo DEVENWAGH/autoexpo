@@ -22,7 +22,7 @@ export async function POST(request: Request) {
     verifyImageKitConfig();
 
     const formData = await request.formData();
-    const file = formData.get("file") as File;
+    const file = formData.get("file") as File | string;
     const folder = formData.get("folder") as string || "/vehicles";
 
     if (!file) {
@@ -33,36 +33,74 @@ export async function POST(request: Request) {
       );
     }
 
+    // Check if we received a data URL instead of a File
+    if (typeof file === 'string' && file.startsWith('data:')) {
+      console.log('Processing data URL directly');
+      
+      try {
+        const upload = await imageKit.upload({
+          file: file, // ImageKit SDK can handle data URLs directly
+          fileName: `upload-${Date.now()}.${file.includes('image/webp') ? 'webp' : 'jpg'}`,
+          folder: folder,
+          useUniqueFileName: true,
+        });
+
+        // Format the URL before returning it
+        const baseUrl = upload.url.split('?')[0];
+
+        console.log('Data URL upload successful:', {
+          url: baseUrl,
+          fileId: upload.fileId
+        });
+
+        return NextResponse.json({
+          success: true,
+          url: baseUrl,
+          fileId: upload.fileId
+        });
+      } catch (uploadError) {
+        console.error('ImageKit data URL upload error:', uploadError);
+        return NextResponse.json({
+          success: false,
+          error: 'ImageKit upload failed',
+          details: uploadError instanceof Error ? uploadError.message : 'Unknown upload error'
+        }, { status: 500 });
+      }
+    }
+
+    // Regular file processing
     console.log('Processing file:', {
-      name: file.name,
-      type: file.type,
-      size: file.size,
+      name: typeof file !== 'string' ? file.name : 'data-url',
+      type: typeof file !== 'string' ? file.type : 'unknown',
+      size: typeof file !== 'string' ? file.size : 'unknown',
       folder: folder
     });
 
-    const buffer = Buffer.from(await file.arrayBuffer());
+    const buffer = Buffer.from(await (file as File).arrayBuffer());
     const base64 = buffer.toString("base64");
 
     try {
       console.log('Attempting ImageKit upload...');
       const upload = await imageKit.upload({
         file: base64,
-        fileName: file.name,
+        fileName: typeof file !== 'string' ? file.name : `upload-${Date.now()}.jpg`,
         folder: folder,
         useUniqueFileName: true,
       });
 
+      // Format the URL before returning it
+      const baseUrl = upload.url.split('?')[0];
+
       console.log('Upload successful:', {
-        url: upload.url,
+        url: baseUrl,
         fileId: upload.fileId
       });
 
       return NextResponse.json({
         success: true,
-        url: upload.url,
+        url: baseUrl,
         fileId: upload.fileId
       });
-
     } catch (uploadError) {
       console.error('ImageKit upload error:', uploadError);
       return NextResponse.json({

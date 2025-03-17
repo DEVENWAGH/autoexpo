@@ -1,125 +1,88 @@
 import { z } from "zod";
+import { carBasicInfoSchema, carEngineSchema, bikeBasicInfoSchema, bikeEngineSchema } from "@/lib/form-utils";
 
-// Shared validation schemas for both car and bike forms
-export const basicInfoSchema = z.object({
-  brand: z.string().min(1, "Brand is required"),
-  name: z.string().min(1, "Model name is required"),
-  priceExshowroom: z.string().min(1, "Ex-showroom price is required"),
-  priceOnroad: z.string().min(1, "On-road price is required"),
-  variant: z.string().optional(),
-  pros: z.string().optional(),
-  cons: z.string().optional(),
-});
-
-export const engineTransmissionSchema = z.object({
-  engineType: z.string().min(1, "Engine type is required"),
-  displacement: z.union([z.string().min(1), z.number()]).optional(),
-  maxPower: z.string().min(1, "Max power is required"),
-  maxTorque: z.string().min(1, "Max torque is required"),
-});
-
-export const dimensionsSchema = z.object({
-  length: z.union([z.string(), z.number()]).optional(),
-  width: z.union([z.string(), z.number()]).optional(),
-  height: z.union([z.string(), z.number()]).optional(),
-});
-
-export const imagesSchema = z.object({
-  // Only require main image, others are optional
-  mainImages: z.array(z.string()).min(1, "Cover image is required"),
-  // Make other image fields optional
-  interiorImages: z.array(z.string()).optional(),
-  exteriorImages: z.array(z.string()).optional(),
-  colorImages: z.array(z.string()).optional(),
-  galleryImages: z.array(z.string()).optional(),
-});
-
-export const fuelPerformanceSchema = z.object({
-  fuelType: z.string().min(1, "Fuel type is required"),
-  mileage: z.union([z.string(), z.number()]).optional(),
-});
-
-// Validate images section
-export const validateImages = (mainImages: string[], otherImages: Record<string, any> = {}) => {
-  const hasMainImage = mainImages && mainImages.length > 0;
-  
-  if (!hasMainImage) {
-    return {
-      isValid: false,
-      error: "At least one main image is required"
-    };
+// Validation schemas for different form sections
+const validationSchemas: Record<string, any> = {
+  cars: {
+    basicInfo: carBasicInfoSchema,
+    engineTransmission: carEngineSchema,
+    // Add more car schemas
+  },
+  bikes: {
+    basicInfo: bikeBasicInfoSchema,
+    engineTransmission: bikeEngineSchema,
+    // Add more bike schemas
   }
-  
-  return {
-    isValid: true,
-    error: null
-  };
 };
 
-// Cross-field validation for price
-export const validatePrices = (exshowroom: string | number, onroad: string | number) => {
-  // Skip validation if values are missing - the required field validation will handle this
-  if (!exshowroom || !onroad) return { isValid: true };
+// Validate a section based on vehicle type and section name
+export const validateSection = (
+  section: string, 
+  data: any, 
+  vehicleType: 'cars' | 'bikes' = 'cars'
+) => {
+  const schema = validationSchemas[vehicleType]?.[section];
   
-  const ex = Number(exshowroom);
-  const on = Number(onroad);
+  if (!schema) {
+    // For sections without schema, perform basic required field validation
+    if (section === "basicInfo") {
+      const errors: Record<string, string[]> = {};
+      const { brand, name, priceExshowroom, priceOnroad } = data || {};
+      
+      if (!brand) errors.brand = ["Brand is required"];
+      if (!name) errors.name = ["Name is required"];
+      if (!priceExshowroom) errors.priceExshowroom = ["Ex-showroom price is required"];
+      if (!priceOnroad) errors.priceOnroad = ["On-road price is required"];
+      
+      return { 
+        isValid: Object.keys(errors).length === 0,
+        errors: Object.keys(errors).length > 0 ? errors : null 
+      };
+    }
+    return { isValid: true, errors: null }; // No schema, consider valid
+  }
   
-  if (isNaN(ex) || isNaN(on)) {
-    return { 
-      isValid: false, 
-      error: "Please enter valid numbers for prices" 
+  try {
+    schema.parse(data);
+    return { isValid: true, errors: null };
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      const fieldErrors = error.errors.reduce((acc: Record<string, string[]>, curr) => {
+        const field = curr.path.join('.');
+        if (!acc[field]) acc[field] = [];
+        acc[field].push(curr.message);
+        return acc;
+      }, {});
+      
+      return { isValid: false, errors: fieldErrors };
+    }
+    return { isValid: false, errors: { _form: ['Validation failed'] } };
+  }
+};
+
+// Enhance price validation with more clear error messages
+export const validatePrices = (
+  exShowroom?: string | number,
+  onRoad?: string | number
+) => {
+  if (!exShowroom || !onRoad) return { isValid: true };
+  
+  const exNum = Number(exShowroom);
+  const onNum = Number(onRoad);
+  
+  if (isNaN(exNum) || isNaN(onNum)) {
+    return {
+      isValid: false,
+      error: "Please enter valid price numbers",
     };
   }
   
-  if (ex >= on) {
+  if (exNum >= onNum) {
     return {
       isValid: false,
-      error: "Ex-showroom price must be lower than On-road price"
+      error: "Ex-showroom price must be less than on-road price",
     };
   }
   
   return { isValid: true };
-};
-
-// Utility function to validate a section against its schema
-export const validateSection = (section: string, data: any) => {
-  let schema;
-  
-  switch (section) {
-    case "basicInfo":
-      schema = basicInfoSchema;
-      break;
-    case "engineTransmission":
-      schema = engineTransmissionSchema;
-      break;
-    case "dimensions":
-    case "dimensionsCapacity":
-    case "dimensionsAndCapacity":
-      schema = dimensionsSchema;
-      break;
-    case "images":
-      // For images, we need to validate the actual files, not just form data
-      return { isValid: true, errors: {} }; // Images validated separately
-    case "fuelPerformance":
-      schema = fuelPerformanceSchema;
-      break;
-    default:
-      // For sections without specific validation
-      return { isValid: true, errors: {} };
-  }
-  
-  try {
-    const result = schema.safeParse(data);
-    if (result.success) {
-      return { isValid: true, errors: {} };
-    } else {
-      return { 
-        isValid: false, 
-        errors: result.error.flatten().fieldErrors 
-      };
-    }
-  } catch (error) {
-    console.error(`Validation error in ${section}:`, error);
-    return { isValid: false, errors: { "_error": ["Validation failed"] } };
-  }
 };
