@@ -10,6 +10,11 @@ export const FeaturesTab: React.FC<FeaturesTabProps> = ({ data, type }) => {
   const categories =
     type === "car" ? getCarCategories(data) : getBikeCategories(data);
 
+  // Filter categories based on their condition property
+  const filteredCategories = categories.filter(
+    (category) => !category.condition || category.condition(data)
+  );
+
   // Completely redesigned getNestedValue function to better handle paths and boolean values
   const getNestedValue = (
     obj: Record<string, any>,
@@ -133,7 +138,7 @@ export const FeaturesTab: React.FC<FeaturesTabProps> = ({ data, type }) => {
   return (
     <div className="p-6">
       <div className="space-y-8">
-        {categories.map((category) => (
+        {filteredCategories.map((category) => (
           <div key={category.title} className="space-y-4">
             <h3 className="text-lg font-semibold">{category.title}</h3>
             <div className="bg-gray-50 rounded-lg overflow-hidden">
@@ -180,6 +185,7 @@ interface FeatureItem {
 interface FeatureCategory {
   title: string;
   items: FeatureItem[];
+  condition?: (data: Record<string, any>) => boolean; // Add this line
 }
 
 const getCarCategories = (data: Record<string, any>): FeatureCategory[] => [
@@ -214,24 +220,32 @@ const getCarCategories = (data: Record<string, any>): FeatureCategory[] => [
     title: "Performance & Fuel",
     items: [
       { label: "Fuel Type", path: "fuelPerformance.fuelType" },
-      {
-        label: "Fuel Tank Capacity",
-        value: data.fuelPerformance?.fuelTankCapacity
-          ? `${data.fuelPerformance.fuelTankCapacity} L`
-          : undefined,
-      },
-      {
-        label: "Mileage",
-        value: data.fuelPerformance?.mileage
-          ? `${data.fuelPerformance.mileage} kmpl`
-          : undefined,
-      },
-      {
-        label: "Highway Mileage",
-        value: data.fuelPerformance?.highwayMileage
-          ? `${data.fuelPerformance.highwayMileage} kmpl`
-          : undefined,
-      },
+
+      // Only show for non-electric vehicles
+      ...(data.fuelPerformance?.fuelType !== "Electric"
+        ? [
+            {
+              label: "Fuel Tank Capacity",
+              value: data.fuelPerformance?.fuelTankCapacity
+                ? `${data.fuelPerformance.fuelTankCapacity} L`
+                : undefined,
+            },
+            {
+              label: "Mileage",
+              value: data.fuelPerformance?.mileage
+                ? `${data.fuelPerformance.mileage} kmpl`
+                : undefined,
+            },
+            {
+              label: "Highway Mileage",
+              value: data.fuelPerformance?.highwayMileage
+                ? `${data.fuelPerformance.highwayMileage} kmpl`
+                : undefined,
+            },
+          ]
+        : []),
+
+      // Show for all vehicles
       {
         label: "Top Speed",
         value: data.fuelPerformance?.topSpeed
@@ -244,8 +258,40 @@ const getCarCategories = (data: Record<string, any>): FeatureCategory[] => [
           ? `${data.fuelPerformance.acceleration} sec`
           : undefined,
       },
-      { label: "Emission Norm", path: "fuelPerformance.emissionNorm" },
+
+      // Show emission norm as ZEV for electric vehicles, otherwise show the actual value
+      {
+        label: "Emission Norm",
+        value:
+          data.fuelPerformance?.fuelType === "Electric"
+            ? "ZEV" // Zero Emission Vehicle
+            : data.fuelPerformance?.emissionNorm || undefined,
+      },
     ],
+  },
+  // Add this section to the getCarCategories function:
+
+  // Inside the "Performance & Fuel" title section, add the electric vehicle fields
+  {
+    title: "Electric Vehicle Features",
+    items: [
+      { label: "Electric Range", path: "fuelPerformance.electricRange" },
+      { label: "Battery Capacity", path: "fuelPerformance.batteryCapacity" },
+      { label: "DC Charging Time", path: "fuelPerformance.chargingTimeDC" },
+      { label: "AC Charging Time", path: "fuelPerformance.chargingTimeAC" },
+      { label: "Charging Port", path: "fuelPerformance.chargingPort" },
+      { label: "Charging Options", path: "fuelPerformance.chargingOptions" },
+      {
+        label: "Regenerative Braking",
+        path: "fuelPerformance.regenerativeBraking",
+      },
+      {
+        label: "Regenerative Braking Levels",
+        path: "fuelPerformance.regenerativeBrakingLevels",
+      },
+    ],
+    // Only show this section for electric vehicles
+    condition: (data) => data.fuelPerformance?.fuelType === "Electric",
   },
   // ... other categories remain unchanged
 
@@ -587,6 +633,35 @@ const getCarCategories = (data: Record<string, any>): FeatureCategory[] => [
       {
         label: "Additional Features",
         path: "internetFeatures.additionalConnectedFeatures",
+      },
+    ],
+  },
+  // Add turning radius to the features display
+  {
+    title: "Suspension & Steering",
+    items: [
+      {
+        label: "Front Suspension",
+        path: "suspensionSteeringBrakes.frontSuspension",
+      },
+      {
+        label: "Rear Suspension",
+        path: "suspensionSteeringBrakes.rearSuspension",
+      },
+      { label: "Steering Type", path: "suspensionSteeringBrakes.steeringType" },
+      {
+        label: "Steering Column",
+        path: "suspensionSteeringBrakes.steeringColumn",
+      },
+      {
+        label: "Steering Gear Type",
+        path: "suspensionSteeringBrakes.steeringGearType",
+      },
+      {
+        label: "Turning Radius",
+        value: data.suspensionSteeringBrakes?.turningRadius
+          ? `${data.suspensionSteeringBrakes.turningRadius} m`
+          : undefined,
       },
     ],
   },

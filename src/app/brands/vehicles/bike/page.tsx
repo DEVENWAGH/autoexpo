@@ -125,7 +125,7 @@ export default function NewBikePage() {
     [updateFormSection]
   );
 
-  // Validate current section - update to make images optional
+  // Validate current section
   const validateCurrentSection = useCallback(() => {
     // Always validate required fields in basic info section
     if (activeSection === "basicInfo") {
@@ -156,6 +156,9 @@ export default function NewBikePage() {
           return false;
         }
       }
+
+      // Clear validation errors if all fields are valid
+      setValidationErrors({});
     }
 
     // Special handling for images section - make it optional
@@ -182,6 +185,9 @@ export default function NewBikePage() {
         );
         return false;
       }
+
+      // Clear validation errors if all fields are valid
+      setValidationErrors({});
     }
 
     // If we're here and there's no data for the section, check if it's a required section
@@ -192,6 +198,13 @@ export default function NewBikePage() {
         );
         return false;
       }
+      setValidationErrors({});
+      return true;
+    }
+
+    // For all other sections, assume they're valid if we get here
+    // This prevents issues with the toast appearing for non-required sections
+    if (!["basicInfo", "engineTransmission"].includes(activeSection)) {
       setValidationErrors({});
       return true;
     }

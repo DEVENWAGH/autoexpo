@@ -38,7 +38,7 @@ const initialState = {
   error: '',
 };
 
-// Common placeholder texts
+// Common placeholder texts - keep as is, our components will handle display correctly
 export const CAR_PLACEHOLDERS = {
   name: "New Model",
   brand: "",
@@ -66,15 +66,23 @@ export const useVehicleStore = create<VehicleStore>()(
     (set) => ({
       ...initialState,
       setVehicleType: (type) => set({ vehicleType: type }),
-      updateFormSection: (section, data) => set((state) => ({
-        formState: {
-          ...state.formState,
-          [section]: {
-            ...(state.formState[section] || {}),
-            ...data
+      updateFormSection: (section, data) => set((state) => {
+        // Always preserve existing data by deep cloning the section
+        const currentSectionData = { ...(state.formState[section] || {}) };
+        
+        // Merge new data into the existing data
+        Object.entries(data).forEach(([key, value]) => {
+          // Handle special case conversions if needed
+          currentSectionData[key] = value;
+        });
+        
+        return {
+          formState: {
+            ...state.formState,
+            [section]: currentSectionData
           }
-        }
-      })),
+        };
+      }),
       setMainImages: (images) => set({ mainImages: images }),
       setInteriorImages: (images) => set({ interiorImages: images }),
       setExteriorImages: (images) => set({ exteriorImages: images }),
@@ -93,7 +101,9 @@ export const useVehicleStore = create<VehicleStore>()(
         exteriorImages: state.exteriorImages,
         galleryImages: state.galleryImages,
         colorImages: state.colorImages
-      })
+      }),
+      // Make sure to hydrate the store from localStorage
+      skipHydration: false
     }
   )
 );

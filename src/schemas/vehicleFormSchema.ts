@@ -42,6 +42,15 @@ export const fuelPerformanceSchema = z.object({
   topSpeed: z.string().optional(),
   acceleration: z.string().optional(),
   emissionNorm: z.string().optional(),
+  // Electric vehicle specific fields
+  electricRange: z.string().optional(),
+  batteryCapacity: z.string().optional(),
+  chargingTimeDC: z.string().optional(),
+  chargingTimeAC: z.string().optional(),
+  chargingPort: z.string().optional(),
+  chargingOptions: z.string().optional(),
+  regenerativeBraking: z.string().optional(),
+  regenerativeBrakingLevels: z.string().optional().or(z.number().optional()),
 });
 
 // Other schemas...

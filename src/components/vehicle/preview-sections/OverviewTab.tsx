@@ -9,6 +9,23 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ data, type }) => {
   const pros = basicInfo?.pros?.split("\n").filter(Boolean) || [];
   const cons = basicInfo?.cons?.split("\n").filter(Boolean) || [];
 
+  const vehicleSpec =
+    type === "car"
+      ? [
+          {
+            label: "Body Type",
+            value: data.basicInfo?.carType || "N/A",
+          },
+          {
+            label: "Power Type",
+            value:
+              data.fuelPerformance?.fuelType === "Electric"
+                ? "Electric"
+                : "Combustion",
+          },
+        ]
+      : [];
+
   return (
     <div className="p-6 space-y-8">
       {/* Key Specs Section */}
@@ -35,6 +52,13 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ data, type }) => {
                 label="Transmission"
                 value={data.engineTransmission?.transmissionType || "N/A"}
               />
+              {vehicleSpec.map((spec) => (
+                <InfoCard
+                  key={spec.label}
+                  label={spec.label}
+                  value={spec.value}
+                />
+              ))}
             </>
           ) : (
             <>

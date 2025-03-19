@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
   } catch (error) {
     console.error('API Error getting user vehicles:', error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to get vehicles' }, 
+      { error: error instanceof Error ? error.message : 'Failed to get vehicles' },
       { status: 500 }
     );
   }

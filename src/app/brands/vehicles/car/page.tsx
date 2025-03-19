@@ -19,7 +19,7 @@ import {
 } from "@/components/form/FormComponents";
 import { VehicleFormField } from "@/components/form/VehicleFormField";
 
-// Car-specific constants
+// Fix the CAR_BRANDS array syntax
 const CAR_BRANDS = [
   "Maruti Suzuki",
   "Hyundai",
@@ -48,6 +48,7 @@ const CAR_BRANDS = [
   "Lamborghini",
 ] as const;
 
+// Update CAR_TYPES to remove Electric since it will be handled by the toggle
 const CAR_TYPES = [
   "Sedan",
   "Hatchback",
@@ -60,8 +61,8 @@ const CAR_TYPES = [
   "Pickup Truck",
   "Luxury",
   "Sports",
-  "Electric",
   "Hybrid",
+  // "Electric" removed - now handled by toggle
 ] as const;
 
 const CAR_SECTIONS = [
@@ -90,6 +91,52 @@ const CAR_PLACEHOLDERS = {
   priceExshowroom: "850000",
   pros: "Spacious Interior\nFuel Efficient\nAdvanced Safety Features\nComfortable Ride",
   cons: "Average Performance\nBasic Infotainment System\nLimited Color Options",
+};
+
+// Add placeholder constants for different sections near other constants at the top for different sections near other constants at the top
+const PLACEHOLDER_VALUES = {
+  engineTransmission: {
+    engineType: "mHawk 130 CRDe",
+    displacement: "2184",
+    maxPower: "130.07bhp@3750rpm",
+    maxTorque: "300Nm@1600-2800rpm",
+    cylinders: "4",
+    valvesPerCylinder: "4",
+    gearbox: "6-Speed AT",
+  },
+  fuelPerformance: {
+    fuelTankCapacity: "57",
+    mileage: "15.6",
+    highwayMileage: "18.2",
+    topSpeed: "180",
+    acceleration: "9.5",
+    emissionNorm: "BS VI 2.0",
+  },
+  dimensionsCapacity: {
+    length: "3985",
+    width: "1820",
+    height: "1855",
+    wheelBase: "2450",
+    groundClearance: "226",
+    seatingCapacity: "5",
+    doors: "4",
+    bootSpace: "420",
+    kerbWeight: "1650",
+    approachAngle: "41.2",
+    breakOverAngle: "26.2",
+    departureAngle: "36",
+  },
+  suspensionSteeringBrakes: {
+    frontSuspension: "Double wishbone suspension",
+    rearSuspension: "Multi-link suspension",
+    steeringGearType: "Rack & Pinion",
+    frontWheelSize: "18",
+    rearWheelSize: "18",
+  },
+  exterior: {
+    tyreSize: "255/60 R19",
+  },
+  // Add more sections as needed// Add more sections as needed
 };
 
 export default function NewCarPage() {
@@ -134,7 +181,7 @@ export default function NewCarPage() {
 
   // Validate current section
   const validateCurrentSection = useCallback(() => {
-    // Always validate required fields in basic info section
+    // Always validate required fields in basic info sectionn basic info section
     if (activeSection === "basicInfo") {
       const { brand, name, priceExshowroom, priceOnroad } =
         formState.basicInfo || {};
@@ -161,13 +208,16 @@ export default function NewCarPage() {
           return false;
         }
       }
+
+      // Clear validation errors if all fields are validrs if all fields are valid
+      setValidationErrors({});
     }
 
-    // Special handling for images section - now images are optional
+    // Special handling for images section - now images are optionalction - now images are optional
     if (activeSection === "images") {
-      // Clear any validation errors for images
+      // Clear any validation errors for imageserrors for images
       setValidationErrors({});
-      return true; // Always return true for images section to make it optional
+      return true; // Always return true for images section to make it optional return true; // Always return true for images section to make it optional
     }
 
     // For engineTransmission section
@@ -184,6 +234,9 @@ export default function NewCarPage() {
         setValidationErrors(errors);
         return false;
       }
+
+      // Clear validation errors if all fields are validrs if all fields are valid
+      setValidationErrors({});
     }
 
     // For fuelPerformance section
@@ -197,9 +250,12 @@ export default function NewCarPage() {
         setValidationErrors(errors);
         return false;
       }
+
+      // Clear validation errors if all fields are validrs if all fields are valid
+      setValidationErrors({});
     }
 
-    // If we get here and there's no data at all for this section, check if it's a required section
+    // If we get here and there's no data at all for this section, check if it's a required section data at all for this section, check if it's a required section
     if (!formState[activeSection]) {
       if (
         ["basicInfo", "engineTransmission", "fuelPerformance"].includes(
@@ -215,14 +271,25 @@ export default function NewCarPage() {
       return true;
     }
 
-    // Run any additional schema-based validation from the validation module
+    // For all other sections, assume they're valid if we get here
+    // This prevents issues with the toast appearing for non-required sectionshis prevents issues with the toast appearing for non-required sections
+    if (
+      !["basicInfo", "engineTransmission", "fuelPerformance"].includes(
+        activeSection
+      )
+    ) {
+      setValidationErrors({});
+      return true;
+    }
+
+    // Run any additional schema-based validation from the validation module if neededn from the validation module if needed
     const { isValid, errors } = validateSection(
       activeSection,
       formState[activeSection],
       "cars"
     );
 
-    // Handle validation errors
+    // Handle validation errorsrs
     if (!isValid && errors) {
       const formattedErrors = Object.fromEntries(
         Object.entries(errors).map(([key, value]) => [
@@ -237,9 +304,9 @@ export default function NewCarPage() {
     }
 
     return isValid;
-  }, [activeSection, formState, mainImages]);
+  }, [activeSection, formState]);
 
-  // Add a function to validate all required sections - update only required validation
+  // Add a function to validate all required sections - update only required validation- update only required validation
   const validateRequiredSections = useCallback(() => {
     // Check basic info
     const { brand, name, priceExshowroom, priceOnroad } =
@@ -281,11 +348,11 @@ export default function NewCarPage() {
     return true;
   }, [formState, setActiveSection]);
 
-  // Update section completion status when section changes
+  // Update section completion status when section changes completion status when section changes
   useEffect(() => {
-    // For images section, check if mainImages exist to mark completion
+    // For images section, check if mainImages exist to mark completionainImages exist to mark completion
     if (activeSection === "images") {
-      // Check if image section should be marked as completed
+      // Check if image section should be marked as completedrked as completed
       const isValid = mainImages.length > 0;
       if (isValid) {
         setSectionCompletionStatus((prev) => ({
@@ -301,7 +368,7 @@ export default function NewCarPage() {
       return;
     }
 
-    // For other sections, use the existing logic
+    // For other sections, use the existing logicexisting logic
     if (formState[activeSection]) {
       const timer = setTimeout(() => {
         const isValid = validateCurrentSection();
@@ -319,7 +386,7 @@ export default function NewCarPage() {
 
   // Section navigation handlers
   const handleNextSection = useCallback(() => {
-    // Validate current section before navigating
+    // Validate current section before navigatingting
     const isValid = validateCurrentSection();
     if (isValid) {
       const currentIndex = CAR_SECTIONS.findIndex(
@@ -342,6 +409,28 @@ export default function NewCarPage() {
     }
   }, [activeSection]);
 
+  // Add a new function to apply placeholders when a tab is clickedlders when a tab is clicked
+  const applyPlaceholders = useCallback(
+    (section: string) => {
+      if (PLACEHOLDER_VALUES[section]) {
+        // Don't overwrite existing values, just set placeholderslaceholders
+        const existingData = formState[section] || {};
+        // We'll show placeholders but not actually change the form statethe form state
+        console.log(`Applied placeholders for ${section}`);
+      }
+    },
+    [formState]
+  );
+
+  // Modify the setActiveSection logic to apply placeholdersapply placeholders
+  const handleSectionChange = useCallback(
+    (sectionId: string) => {
+      setActiveSection(sectionId);
+      applyPlaceholders(sectionId);
+    },
+    [setActiveSection, applyPlaceholders]
+  );
+
   // Form submission
   const handleSubmitForm = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -349,7 +438,7 @@ export default function NewCarPage() {
     setError("");
 
     try {
-      // Validate all required sections
+      // Validate all required sectionsired sections
       let allValid = true;
       const requiredSections = [
         "basicInfo",
@@ -387,17 +476,76 @@ export default function NewCarPage() {
       }
 
       console.log("Preparing form data for submission...");
-      // Prepare form data
+
+      // Prepare a clean copy of the form statee
+      let cleanedFormState = { ...formState };
+
+      // Only remove electric-specific fields if not an electric vehiclec vehicle
+      if (formState.fuelPerformance?.fuelType !== "Electric") {
+        console.log(
+          "Non-electric vehicle detected, removing electric-specific fields"
+        );
+        // Create a clean version without electric fieldsric fields
+        if (cleanedFormState.fuelPerformance) {
+          const {
+            batteryCapacity,
+            chargingTimeDC,
+            chargingTimeAC,
+            chargingPort,
+            chargingOptions,
+            regenerativeBraking,
+            regenerativeBrakingLevels,
+            ...remainingFuelProps
+          } = cleanedFormState.fuelPerformance;
+          cleanedFormState = {
+            ...cleanedFormState,
+            fuelPerformance: remainingFuelProps,
+          };
+        }
+      } else {
+        console.log(
+          "Electric vehicle detected, removing combustion-specific fields"
+        );
+        // For electric vehicles, remove combustion engine specific fieldsn engine specific fields
+        if (cleanedFormState.engineTransmission) {
+          const {
+            engineType,
+            displacement,
+            maxPower,
+            maxTorque,
+            cylinders,
+            valvesPerCylinder,
+            gearbox,
+            ...remainingEngineProps
+          } = cleanedFormState.engineTransmission;
+          cleanedFormState = {
+            ...cleanedFormState,
+            engineTransmission: remainingEngineProps,
+          };
+        }
+        // Set fuel type to Electric if not already set
+        if (!cleanedFormState.fuelPerformance?.fuelType) {
+          cleanedFormState = {
+            ...cleanedFormState,
+            fuelPerformance: {
+              ...cleanedFormState.fuelPerformance,
+              fuelType: "Electric",
+            },
+          };
+        }
+      }
+
+      // Prepare form data with cleaned stated state
       const formData = new FormData();
       formData.append("vehicleType", "cars");
-
-      // Ensure required fields are set, especially variant
+      // Add form state as JSON with the fixed variant fieldd
+      // Ensure required fields are set, especially variantare set, especially variant
       const updatedFormState = {
-        ...formState,
+        ...cleanedFormState,
         basicInfo: {
-          ...formState.basicInfo,
+          ...cleanedFormState.basicInfo,
           // Set variant to Base if not already set
-          variant: formState.basicInfo?.variant || "Base",
+          variant: cleanedFormState.basicInfo?.variant || "Base",
         },
       };
 
@@ -419,8 +567,7 @@ export default function NewCarPage() {
       interiorImages.forEach((img) => formData.append("interiorImages", img));
       exteriorImages.forEach((img) => formData.append("exteriorImages", img));
 
-      console.log("Submitting car data...");
-      // Submit data
+      // Submit form data
       await vehicleService.createVehicle(formData);
       toast.success(
         `Car "${formState.basicInfo?.name || "New Car"}" created successfully!`,
@@ -457,19 +604,19 @@ export default function NewCarPage() {
     }
   }, [previewMode, validateRequiredSections]);
 
-  // Add this helper function for navigation buttons before the render
+  // Add this helper function for navigation buttons before the rendergation buttons before the render
   const getNavigationButtons = () => {
     const isLastSection =
       activeSection === CAR_SECTIONS[CAR_SECTIONS.length - 1].id;
 
-    // Update the Next button implementation to explicitly prevent form submission
+    // Update the Next button implementation to explicitly prevent form submissiontion to explicitly prevent form submission
     const nextButton = isLastSection ? (
       <Button
         type="submit"
         disabled={isSubmitting}
         onClick={(e) => {
           if (!validateRequiredSections()) {
-            e.preventDefault();
+            e.preventDefault(); // Explicitly prevent default form submission
           }
         }}
       >
@@ -501,7 +648,7 @@ export default function NewCarPage() {
     );
   };
 
-  // Render section fields - use the existing renderSectionFields function
+  // Render section fields - use the existing renderSectionFields functionderSectionFields function
   const renderSectionFields = useCallback(() => {
     switch (activeSection) {
       case "basicInfo":
@@ -531,7 +678,6 @@ export default function NewCarPage() {
               placeholder="Variant Name"
             />
 
-            {/* Add this field to ensure 'variant' is properly set */}
             <VehicleFormField
               section="basicInfo"
               field="variant"
@@ -541,12 +687,55 @@ export default function NewCarPage() {
               required
             />
 
+            {/* Add a small toggle for power type (Electric vs ICE) */}
+            <div className="space-y-2">
+              <label className="block text-sm font-medium">Power Type</label>
+              <div className="flex items-center space-x-2">
+                <div className="relative inline-flex h-6 w-11 items-center rounded-full bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background data-[state=checked]:bg-primary">
+                  <input
+                    type="checkbox"
+                    className="peer absolute inset-0 opacity-0 cursor-pointer z-10"
+                    checked={formState.fuelPerformance?.fuelType === "Electric"}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        // Only update fuel type, don't modify car category
+                        handleFieldChange(
+                          "fuelPerformance",
+                          "fuelType",
+                          "Electric"
+                        );
+                      } else {
+                        handleFieldChange("fuelPerformance", "fuelType", "");
+                      }
+                    }}
+                  />
+                  <span
+                    className={`absolute left-1 top-1 h-4 w-4 rounded-full bg-white transition-transform ${
+                      formState.fuelPerformance?.fuelType === "Electric"
+                        ? "translate-x-5"
+                        : ""
+                    }`}
+                  />
+                </div>
+                <span className="text-sm">
+                  {formState.fuelPerformance?.fuelType === "Electric"
+                    ? "Electric"
+                    : "Combustion"}
+                </span>
+              </div>
+            </div>
+
+            {/* Car category dropdown - keep all options available regardless of power type */}
             <VehicleFormField
               section="basicInfo"
               field="carType"
-              label="Car Type"
+              label="Car Body Type"
               type="select"
               options={CAR_TYPES}
+              value={formState.basicInfo?.carType || ""}
+              onChange={(e) => {
+                handleFieldChange("basicInfo", "carType", e.target.value);
+              }}
             />
 
             <div className="space-y-2">
@@ -663,6 +852,7 @@ export default function NewCarPage() {
                   label="Exterior Images (Optional)"
                   usePlaceholder={true}
                   acceptedFileTypes="image/png, image/jpeg, image/webp"
+                  defaultSelected={true} // Set default selected to true
                 />
                 <p className="text-xs text-muted-foreground mt-1">
                   Upload up to 8 images showcasing the exterior
@@ -679,6 +869,7 @@ export default function NewCarPage() {
                   label="Color Variants (Optional)"
                   usePlaceholder={true}
                   acceptedFileTypes="image/png, image/jpeg, image/webp"
+                  defaultSelected={true} // Set default selected to true
                 />
                 <p className="text-xs text-muted-foreground mt-1">
                   Upload images of different color options available
@@ -767,37 +958,59 @@ export default function NewCarPage() {
               )}
             </FormField>
 
-            <FormField label="Number of Cylinders">
-              <PlaceholderInput
-                name="cylinders"
-                placeholder="4"
-                type="number"
-                value={formState.engineTransmission?.cylinders || ""}
-                onChange={(e) =>
-                  handleFieldChange(
-                    "engineTransmission",
-                    "cylinders",
-                    e.target.value
-                  )
-                }
-              />
-            </FormField>
+            {/* Only show cylinder-related fields and gearbox for non-electric vehicles */}
+            {formState.basicInfo?.carType !== "Electric" && (
+              <>
+                <FormField label="Number of Cylinders">
+                  <PlaceholderInput
+                    name="cylinders"
+                    placeholder="4"
+                    type="number"
+                    value={formState.engineTransmission?.cylinders || ""}
+                    onChange={(e) =>
+                      handleFieldChange(
+                        "engineTransmission",
+                        "cylinders",
+                        e.target.value
+                      )
+                    }
+                  />
+                </FormField>
 
-            <FormField label="Valves Per Cylinder">
-              <PlaceholderInput
-                name="valvesPerCylinder"
-                placeholder="4"
-                type="number"
-                value={formState.engineTransmission?.valvesPerCylinder || ""}
-                onChange={(e) =>
-                  handleFieldChange(
-                    "engineTransmission",
-                    "valvesPerCylinder",
-                    e.target.value
-                  )
-                }
-              />
-            </FormField>
+                <FormField label="Valves Per Cylinder">
+                  <PlaceholderInput
+                    name="valvesPerCylinder"
+                    placeholder="4"
+                    type="number"
+                    value={
+                      formState.engineTransmission?.valvesPerCylinder || ""
+                    }
+                    onChange={(e) =>
+                      handleFieldChange(
+                        "engineTransmission",
+                        "valvesPerCylinder",
+                        e.target.value
+                      )
+                    }
+                  />
+                </FormField>
+
+                <FormField label="Gearbox">
+                  <PlaceholderInput
+                    name="gearbox"
+                    placeholder="6-Speed AT"
+                    value={formState.engineTransmission?.gearbox || ""}
+                    onChange={(e) =>
+                      handleFieldChange(
+                        "engineTransmission",
+                        "gearbox",
+                        e.target.value
+                      )
+                    }
+                  />
+                </FormField>
+              </>
+            )}
 
             <FormField label="Turbo Charger">
               <select
@@ -840,42 +1053,29 @@ export default function NewCarPage() {
               </select>
             </FormField>
 
-            <FormField label="Gearbox">
-              <PlaceholderInput
-                name="gearbox"
-                placeholder="6-Speed AT"
-                value={formState.engineTransmission?.gearbox || ""}
-                onChange={(e) =>
-                  handleFieldChange(
-                    "engineTransmission",
-                    "gearbox",
-                    e.target.value
-                  )
-                }
-              />
-            </FormField>
-
-            <FormField label="Drive Type">
-              <select
-                name="driveType"
-                value={formState.engineTransmission?.driveType || ""}
-                onChange={(e) =>
-                  handleFieldChange(
-                    "engineTransmission",
-                    "driveType",
-                    e.target.value
-                  )
-                }
-                className="mt-1 block w-full rounded border border-input bg-background text-foreground px-3 py-2"
-              >
-                <option value="">Select Drive Type</option>
-                {["2WD", "4WD"].map((type) => (
-                  <option key={type} value={type}>
-                    {type}
-                  </option>
-                ))}
-              </select>
-            </FormField>
+            {formState.basicInfo?.carType !== "Electric" && (
+              <FormField label="Drive Type">
+                <select
+                  name="driveType"
+                  value={formState.engineTransmission?.driveType || ""}
+                  onChange={(e) =>
+                    handleFieldChange(
+                      "engineTransmission",
+                      "driveType",
+                      e.target.value
+                    )
+                  }
+                  className="mt-1 block w-full rounded border border-input bg-background text-foreground px-3 py-2"
+                >
+                  <option value="">Select Drive Type</option>
+                  {["2WD", "4WD"].map((type) => (
+                    <option key={type} value={type}>
+                      {type}
+                    </option>
+                  ))}
+                </select>
+              </FormField>
+            )}
           </div>
         );
 
@@ -894,75 +1094,95 @@ export default function NewCarPage() {
                   )
                 }
                 className="mt-1 block w-full rounded border border-input bg-background text-foreground px-3 py-2"
+                disabled={formState.basicInfo?.carType === "Electric"}
               >
                 <option value="">Select Fuel Type</option>
-                {[
-                  "Petrol",
-                  "Diesel",
-                  "CNG",
-                  "Electric",
-                  "Hybrid",
-                  "Flex-Fuel",
-                ].map((type) => (
-                  <option key={type} value={type}>
-                    {type}
-                  </option>
-                ))}
+                <option value="Petrol">Petrol</option>
+                <option value="Diesel">Diesel</option>
+                <option value="Electric">Electric</option>
+                <option value="Hybrid">Hybrid</option>
+                <option value="CNG">CNG</option>
+                <option value="LPG">LPG</option>
               </select>
               {validationErrors["fuelType"] && (
                 <p className="text-xs text-destructive mt-1">
                   {validationErrors["fuelType"]}
                 </p>
               )}
+              {formState.basicInfo?.carType === "Electric" && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Fuel type is set to Electric based on your car type selection
+                </p>
+              )}
             </FormField>
 
-            <FormField label="Fuel Tank Capacity (Litres)">
-              <PlaceholderInput
-                name="fuelTankCapacity"
-                placeholder="57"
-                type="number"
-                value={formState.fuelPerformance?.fuelTankCapacity || ""}
-                onChange={(e) =>
-                  handleFieldChange(
-                    "fuelPerformance",
-                    "fuelTankCapacity",
-                    e.target.value
-                  )
-                }
-              />
-            </FormField>
+            {/* Display fields based on fuel type */}
+            {formState.fuelPerformance?.fuelType !== "Electric" && (
+              <>
+                <FormField label="Fuel Tank Capacity (Litres)">
+                  <PlaceholderInput
+                    name="fuelTankCapacity"
+                    placeholder="57"
+                    type="number"
+                    value={formState.fuelPerformance?.fuelTankCapacity || ""}
+                    onChange={(e) =>
+                      handleFieldChange(
+                        "fuelPerformance",
+                        "fuelTankCapacity",
+                        e.target.value
+                      )
+                    }
+                  />
+                </FormField>
 
-            <FormField label="Mileage (kmpl)">
-              <PlaceholderInput
-                name="mileage"
-                placeholder="15.6"
-                type="text"
-                value={formState.fuelPerformance?.mileage || ""}
-                onChange={(e) =>
-                  handleFieldChange(
-                    "fuelPerformance",
-                    "mileage",
-                    e.target.value
-                  )
-                }
-              />
-            </FormField>
+                <FormField label="Mileage (kmpl)">
+                  <PlaceholderInput
+                    name="mileage"
+                    placeholder="15.6"
+                    type="text"
+                    value={formState.fuelPerformance?.mileage || ""}
+                    onChange={(e) =>
+                      handleFieldChange(
+                        "fuelPerformance",
+                        "mileage",
+                        e.target.value
+                      )
+                    }
+                  />
+                </FormField>
 
-            <FormField label="Highway Mileage (kmpl)">
-              <PlaceholderInput
-                name="highwayMileage"
-                placeholder="18.2"
-                type="text"
-                value={formState.fuelPerformance?.highwayMileage || ""}
-                onChange={(e) =>
-                  handleFieldChange(
-                    "fuelPerformance",
-                    "highwayMileage",
-                    e.target.value
-                  )
-                }
-              />
-            </FormField>
+                <FormField label="Highway Mileage (kmpl)">
+                  <PlaceholderInput
+                    name="highwayMileage"
+                    placeholder="18.2"
+                    type="text"
+                    value={formState.fuelPerformance?.highwayMileage || ""}
+                    onChange={(e) =>
+                      handleFieldChange(
+                        "fuelPerformance",
+                        "highwayMileage",
+                        e.target.value
+                      )
+                    }
+                  />
+                </FormField>
+
+                <FormField label="Emission Norm Compliance">
+                  <PlaceholderInput
+                    name="emissionNorm"
+                    placeholder="BS VI 2.0"
+                    value={formState.fuelPerformance?.emissionNorm || ""}
+                    onChange={(e) =>
+                      handleFieldChange(
+                        "fuelPerformance",
+                        "emissionNorm",
+                        e.target.value
+                      )
+                    }
+                  />
+                </FormField>
+              </>
+            )}
 
             <FormField label="Top Speed (kmph)">
               <PlaceholderInput
@@ -997,20 +1217,137 @@ export default function NewCarPage() {
               />
             </FormField>
 
-            <FormField label="Emission Norm Compliance">
-              <PlaceholderInput
-                name="emissionNorm"
-                placeholder="BS VI 2.0"
-                value={formState.fuelPerformance?.emissionNorm || ""}
-                onChange={(e) =>
-                  handleFieldChange(
-                    "fuelPerformance",
-                    "emissionNorm",
-                    e.target.value
-                  )
-                }
-              />
-            </FormField>
+            {/* Electric vehicle specific fields */}
+            {formState.fuelPerformance?.fuelType === "Electric" && (
+              <>
+                <FormField label="Range (km)">
+                  <PlaceholderInput
+                    name="electricRange"
+                    placeholder="557 - 683"
+                    value={formState.fuelPerformance?.electricRange || ""}
+                    onChange={(e) =>
+                      handleFieldChange(
+                        "fuelPerformance",
+                        "electricRange",
+                        e.target.value
+                      )
+                    }
+                  />
+                </FormField>
+
+                <FormField label="Battery Capacity (kWh)">
+                  <PlaceholderInput
+                    name="batteryCapacity"
+                    placeholder="59 - 79"
+                    value={formState.fuelPerformance?.batteryCapacity || ""}
+                    onChange={(e) =>
+                      handleFieldChange(
+                        "fuelPerformance",
+                        "batteryCapacity",
+                        e.target.value
+                      )
+                    }
+                  />
+                </FormField>
+
+                <FormField label="Charging Time DC">
+                  <PlaceholderInput
+                    name="chargingTimeDC"
+                    placeholder="20Min with 180 kW DC"
+                    value={formState.fuelPerformance?.chargingTimeDC || ""}
+                    onChange={(e) =>
+                      handleFieldChange(
+                        "fuelPerformance",
+                        "chargingTimeDC",
+                        e.target.value
+                      )
+                    }
+                  />
+                </FormField>
+
+                <FormField label="Charging Time AC">
+                  <PlaceholderInput
+                    name="chargingTimeAC"
+                    placeholder="8 / 11.7 h (11.2 kW / 7.2 kW Charger)"
+                    value={formState.fuelPerformance?.chargingTimeAC || ""}
+                    onChange={(e) =>
+                      handleFieldChange(
+                        "fuelPerformance",
+                        "chargingTimeAC",
+                        e.target.value
+                      )
+                    }
+                  />
+                </FormField>
+
+                <FormField label="Charging Port">
+                  <PlaceholderInput
+                    name="chargingPort"
+                    placeholder="CCS-II"
+                    value={formState.fuelPerformance?.chargingPort || ""}
+                    onChange={(e) =>
+                      handleFieldChange(
+                        "fuelPerformance",
+                        "chargingPort",
+                        e.target.value
+                      )
+                    }
+                  />
+                </FormField>
+
+                <FormField label="Charging Options">
+                  <PlaceholderInput
+                    name="chargingOptions"
+                    placeholder="13A (upto 3.2kW) | 7.2kW | 11.2kW | 180 kW DC"
+                    value={formState.fuelPerformance?.chargingOptions || ""}
+                    onChange={(e) =>
+                      handleFieldChange(
+                        "fuelPerformance",
+                        "chargingOptions",
+                        e.target.value
+                      )
+                    }
+                  />
+                </FormField>
+
+                <FormField label="Regenerative Braking">
+                  <select
+                    name="regenerativeBraking"
+                    value={formState.fuelPerformance?.regenerativeBraking || ""}
+                    onChange={(e) =>
+                      handleFieldChange(
+                        "fuelPerformance",
+                        "regenerativeBraking",
+                        e.target.value
+                      )
+                    }
+                    className="mt-1 block w-full rounded border border-input bg-background text-foreground px-3 py-2"
+                  >
+                    <option value="">Select</option>
+                    <option value="Yes">Yes</option>
+                    <option value="No">No</option>
+                  </select>
+                </FormField>
+
+                <FormField label="Regenerative Braking Levels">
+                  <PlaceholderInput
+                    name="regenerativeBrakingLevels"
+                    placeholder="4"
+                    type="number"
+                    value={
+                      formState.fuelPerformance?.regenerativeBrakingLevels || ""
+                    }
+                    onChange={(e) =>
+                      handleFieldChange(
+                        "fuelPerformance",
+                        "regenerativeBrakingLevels",
+                        e.target.value
+                      )
+                    }
+                  />
+                </FormField>
+              </>
+            )}
           </div>
         );
 
@@ -1250,8 +1587,9 @@ export default function NewCarPage() {
             </FormField>
 
             <FormField label="Steering Type">
-              <select
+              <PlaceholderInput
                 name="steeringType"
+                placeholder="Electric Power Steering"
                 value={formState.suspensionSteeringBrakes?.steeringType || ""}
                 onChange={(e) =>
                   handleFieldChange(
@@ -1260,20 +1598,31 @@ export default function NewCarPage() {
                     e.target.value
                   )
                 }
-                className="mt-1 block w-full rounded border border-input bg-background text-foreground px-3 py-2"
-              >
-                <option value="">Select Steering Type</option>
-                {["Hydraulic", "Electric"].map((type) => (
-                  <option key={type} value={type}>
-                    {type}
-                  </option>
-                ))}
-              </select>
+              />
+            </FormField>
+
+            {/* Add Turning Radius field */}
+            <FormField label="Turning Radius (m)">
+              <PlaceholderInput
+                name="turningRadius"
+                placeholder="5.2"
+                type="number"
+                step="0.1"
+                value={formState.suspensionSteeringBrakes?.turningRadius || ""}
+                onChange={(e) =>
+                  handleFieldChange(
+                    "suspensionSteeringBrakes",
+                    "turningRadius",
+                    e.target.value
+                  )
+                }
+              />
             </FormField>
 
             <FormField label="Steering Column">
-              <select
+              <PlaceholderInput
                 name="steeringColumn"
+                placeholder="Tilt & Telescopic"
                 value={formState.suspensionSteeringBrakes?.steeringColumn || ""}
                 onChange={(e) =>
                   handleFieldChange(
@@ -1282,15 +1631,7 @@ export default function NewCarPage() {
                     e.target.value
                   )
                 }
-                className="mt-1 block w-full rounded border border-input bg-background text-foreground px-3 py-2"
-              >
-                <option value="">Select Steering Column</option>
-                {["Tilt", "Telescopic", "Tilt & Telescopic"].map((type) => (
-                  <option key={type} value={type}>
-                    {type}
-                  </option>
-                ))}
-              </select>
+              />
             </FormField>
 
             <FormField label="Steering Gear Type">
@@ -1310,9 +1651,27 @@ export default function NewCarPage() {
               />
             </FormField>
 
+            <FormField label="Turning Radius (m)">
+              <PlaceholderInput
+                name="turningRadius"
+                placeholder="5.2"
+                type="number"
+                step="0.1"
+                value={formState.suspensionSteeringBrakes?.turningRadius || ""}
+                onChange={(e) =>
+                  handleFieldChange(
+                    "suspensionSteeringBrakes",
+                    "turningRadius",
+                    e.target.value
+                  )
+                }
+              />
+            </FormField>
+
             <FormField label="Front Brake Type">
-              <select
+              <PlaceholderInput
                 name="frontBrakeType"
+                placeholder="Disc"
                 value={formState.suspensionSteeringBrakes?.frontBrakeType || ""}
                 onChange={(e) =>
                   handleFieldChange(
@@ -1321,20 +1680,13 @@ export default function NewCarPage() {
                     e.target.value
                   )
                 }
-                className="mt-1 block w-full rounded border border-input bg-background text-foreground px-3 py-2"
-              >
-                <option value="">Select Front Brake Type</option>
-                {["Disc", "Drum", "Ventilated Disc"].map((type) => (
-                  <option key={type} value={type}>
-                    {type}
-                  </option>
-                ))}
-              </select>
+              />
             </FormField>
 
             <FormField label="Rear Brake Type">
-              <select
+              <PlaceholderInput
                 name="rearBrakeType"
+                placeholder="Disc"
                 value={formState.suspensionSteeringBrakes?.rearBrakeType || ""}
                 onChange={(e) =>
                   handleFieldChange(
@@ -1343,23 +1695,14 @@ export default function NewCarPage() {
                     e.target.value
                   )
                 }
-                className="mt-1 block w-full rounded border border-input bg-background text-foreground px-3 py-2"
-              >
-                <option value="">Select Rear Brake Type</option>
-                {["Disc", "Drum", "Ventilated Disc"].map((type) => (
-                  <option key={type} value={type}>
-                    {type}
-                  </option>
-                ))}
-              </select>
+              />
             </FormField>
 
-            <FormField label="Front Wheel Size (Inch)">
+            <FormField label="Front Wheel Size">
               <PlaceholderInput
                 name="frontWheelSize"
                 placeholder="18"
                 type="number"
-                step="0.5"
                 value={formState.suspensionSteeringBrakes?.frontWheelSize || ""}
                 onChange={(e) =>
                   handleFieldChange(
@@ -1371,12 +1714,11 @@ export default function NewCarPage() {
               />
             </FormField>
 
-            <FormField label="Rear Wheel Size (Inch)">
+            <FormField label="Rear Wheel Size">
               <PlaceholderInput
                 name="rearWheelSize"
                 placeholder="18"
                 type="number"
-                step="0.5"
                 value={formState.suspensionSteeringBrakes?.rearWheelSize || ""}
                 onChange={(e) =>
                   handleFieldChange(
@@ -1386,28 +1728,6 @@ export default function NewCarPage() {
                   )
                 }
               />
-            </FormField>
-
-            <FormField label="Wheel Type">
-              <select
-                name="wheelType"
-                value={formState.suspensionSteeringBrakes?.wheelType || ""}
-                onChange={(e) =>
-                  handleFieldChange(
-                    "suspensionSteeringBrakes",
-                    "wheelType",
-                    e.target.value
-                  )
-                }
-                className="mt-1 block w-full rounded border border-input bg-background text-foreground px-3 py-2"
-              >
-                <option value="">Select Wheel Type</option>
-                {["Alloy", "Steel"].map((type) => (
-                  <option key={type} value={type}>
-                    {type}
-                  </option>
-                ))}
-              </select>
             </FormField>
           </div>
         );
@@ -1456,7 +1776,6 @@ export default function NewCarPage() {
                   }
                 />
               </FormField>
-
               <FormField label="Parking Sensors">
                 <select
                   name="parkingSensors"
@@ -1619,171 +1938,61 @@ export default function NewCarPage() {
       case "exterior":
         return (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <FormField label="Adjustable Headlamps">
-              <input
-                type="checkbox"
-                name="adjustableHeadlamps"
-                checked={formState.exterior?.adjustableHeadlamps || false}
-                onChange={(e) =>
-                  handleFieldChange(
-                    "exterior",
-                    "adjustableHeadlamps",
-                    e.target.checked
-                  )
-                }
-                className="rounded border border-input bg-background text-primary"
-              />
-            </FormField>
-            <FormField label="Rear Window Wiper">
-              <input
-                type="checkbox"
-                name="rearWindowWiper"
-                checked={formState.exterior?.rearWindowWiper || false}
-                onChange={(e) =>
-                  handleFieldChange(
-                    "exterior",
-                    "rearWindowWiper",
-                    e.target.checked
-                  )
-                }
-                className="rounded border border-input bg-background text-primary"
-              />
-            </FormField>
-            <FormField label="Rear Window Defogger">
-              <input
-                type="checkbox"
-                name="rearWindowDefogger"
-                checked={formState.exterior?.rearWindowDefogger || false}
-                onChange={(e) =>
-                  handleFieldChange(
-                    "exterior",
-                    "rearWindowDefogger",
-                    e.target.checked
-                  )
-                }
-                className="rounded border border-input bg-background text-primary"
-              />
-            </FormField>
-            <FormField label="Rear Window Washer">
-              <input
-                type="checkbox"
-                name="rearWindowWasher"
-                checked={formState.exterior?.rearWindowWasher || false}
-                onChange={(e) =>
-                  handleFieldChange(
-                    "exterior",
-                    "rearWindowWasher",
-                    e.target.checked
-                  )
-                }
-                className="rounded border border-input bg-background text-primary"
-              />
-            </FormField>
-            <FormField label="Integrated Antenna">
-              <input
-                type="checkbox"
-                name="integratedAntenna"
-                checked={formState.exterior?.integratedAntenna || false}
-                onChange={(e) =>
-                  handleFieldChange(
-                    "exterior",
-                    "integratedAntenna",
-                    e.target.checked
-                  )
-                }
-                className="rounded border border-input bg-background text-primary"
-              />
-            </FormField>
-            <FormField label="LED DRLs">
-              <input
-                type="checkbox"
-                name="ledDRLs"
-                checked={formState.exterior?.ledDRLs || false}
-                onChange={(e) =>
-                  handleFieldChange("exterior", "ledDRLs", e.target.checked)
-                }
-                className="rounded border border-input bg-background text-primary"
-              />
-            </FormField>
-            <FormField label="LED Taillights">
-              <input
-                type="checkbox"
-                name="ledTaillights"
-                checked={formState.exterior?.ledTaillights || false}
-                onChange={(e) =>
-                  handleFieldChange(
-                    "exterior",
-                    "ledTaillights",
-                    e.target.checked
-                  )
-                }
-                className="rounded border border-input bg-background text-primary"
-              />
-            </FormField>
-            <FormField label="Powered & Folding ORVM">
-              <input
-                type="checkbox"
-                name="poweredFoldingORVM"
-                checked={formState.exterior?.poweredFoldingORVM || false}
-                onChange={(e) =>
-                  handleFieldChange(
-                    "exterior",
-                    "poweredFoldingORVM",
-                    e.target.checked
-                  )
-                }
-                className="rounded border border-input bg-background text-primary"
-              />
-            </FormField>
-            <FormField label="Halogen Headlamps">
-              <input
-                type="checkbox"
-                name="halogenHeadlamps"
-                checked={formState.exterior?.halogenHeadlamps || false}
-                onChange={(e) =>
-                  handleFieldChange(
-                    "exterior",
-                    "halogenHeadlamps",
-                    e.target.checked
-                  )
-                }
-                className="rounded border border-input bg-background text-primary"
-              />
-            </FormField>
+            {/* Boolean checkbox fields */}
+            <div className="md:col-span-2">
+              <h3 className="text-sm font-medium mb-3">Exterior Features</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {[
+                  { id: "adjustableHeadlamps", label: "Adjustable Headlamps" },
+                  { id: "rearWindowWiper", label: "Rear Window Wiper" },
+                  { id: "rearWindowDefogger", label: "Rear Window Defogger" },
+                  { id: "rearWindowWasher", label: "Rear Window Washer" },
+                  { id: "integratedAntenna", label: "Integrated Antenna" },
+                  { id: "ledDRLs", label: "LED DRLs" },
+                  { id: "ledTaillights", label: "LED Taillights" },
+                  { id: "poweredFoldingORVM", label: "Powered & Folding ORVM" },
+                  { id: "halogenHeadlamps", label: "Halogen Headlamps" },
+                ].map((item) => (
+                  <label key={item.id} className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      checked={formState.exterior?.[item.id] || false}
+                      onChange={(e) =>
+                        handleFieldChange("exterior", item.id, e.target.checked)
+                      }
+                      className="rounded border-input bg-background text-primary h-4 w-4"
+                    />
+                    <span className="text-sm text-foreground">
+                      {item.label}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* Non-boolean fields */}
             <FormField label="Fog Lights">
-              <select
+              <PlaceholderInput
                 name="fogLights"
+                placeholder="Front & Rear"
                 value={formState.exterior?.fogLights || ""}
                 onChange={(e) =>
                   handleFieldChange("exterior", "fogLights", e.target.value)
                 }
-                className="mt-1 block w-full rounded border border-input bg-background text-foreground px-3 py-2"
-              >
-                <option value="">Select Fog Light Position</option>
-                {["Front", "Rear", "Front & Rear", "None"].map((type) => (
-                  <option key={type} value={type}>
-                    {type}
-                  </option>
-                ))}
-              </select>
+              />
             </FormField>
+
             <FormField label="LED Fog Lamps">
-              <select
+              <PlaceholderInput
                 name="ledFogLamps"
+                placeholder="Front"
                 value={formState.exterior?.ledFogLamps || ""}
                 onChange={(e) =>
                   handleFieldChange("exterior", "ledFogLamps", e.target.value)
                 }
-                className="mt-1 block w-full rounded border border-input bg-background text-foreground px-3 py-2"
-              >
-                <option value="">Select LED Fog Lamp Position</option>
-                {["Front", "Rear", "Front & Rear", "None"].map((type) => (
-                  <option key={type} value={type}>
-                    {type}
-                  </option>
-                ))}
-              </select>
+              />
             </FormField>
+
             <FormField label="Sunroof Type">
               <select
                 name="sunroofType"
@@ -1793,20 +2002,15 @@ export default function NewCarPage() {
                 }
                 className="mt-1 block w-full rounded border border-input bg-background text-foreground px-3 py-2"
               >
-                <option value="">Select Sunroof Type</option>
-                {[
-                  "None",
-                  "Regular",
-                  "Panoramic",
-                  "Single-Pane",
-                  "Multi-Pane",
-                ].map((type) => (
+                <option value="">Select Type</option>
+                {["Panoramic", "Single-Pane", "Pop-up", "None"].map((type) => (
                   <option key={type} value={type}>
                     {type}
                   </option>
                 ))}
               </select>
             </FormField>
+
             <FormField label="Tyre Size">
               <PlaceholderInput
                 name="tyreSize"
@@ -1817,6 +2021,7 @@ export default function NewCarPage() {
                 }
               />
             </FormField>
+
             <FormField label="Tyre Type">
               <select
                 name="tyreType"
@@ -1826,41 +2031,32 @@ export default function NewCarPage() {
                 }
                 className="mt-1 block w-full rounded border border-input bg-background text-foreground px-3 py-2"
               >
-                <option value="">Select Tyre Type</option>
-                {[
-                  "Radial Tubeless",
-                  "Tubeless",
-                  "Tube Type",
-                  "Run Flat",
-                  "Bias Ply",
-                  "All-Season",
-                  "All-Terrain",
-                  "Highway Terrain",
-                  "Mud Terrain",
-                ].map((type) => (
+                <option value="">Select Type</option>
+                {["Radial", "Tubeless", "Tube", "Run-flat"].map((type) => (
                   <option key={type} value={type}>
                     {type}
                   </option>
                 ))}
               </select>
             </FormField>
-            <FormField label="Additional Exterior Features">
-              <PlaceholderTextarea
-                name="additionalExteriorFeatures"
-                placeholder="LED Turn indicator on Fender, LED Centre High Mount Stop Lamp, Skid Plates..."
-                value={formState.exterior?.additionalExteriorFeatures || ""}
-                onChange={(e) =>
-                  handleFieldChange(
-                    "exterior",
-                    "additionalExteriorFeatures",
-                    e.target.value
-                  )
-                }
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                Enter each feature on a new line or separated by commas
-              </p>
-            </FormField>
+
+            {/* Additional Features - Full width textarea */}
+            <div className="md:col-span-2">
+              <FormField label="Additional Features">
+                <PlaceholderTextarea
+                  name="additionalExteriorFeatures"
+                  placeholder="Roof Rails, Rear Spoiler, Alloy Wheels, Mud Flaps, Side Stepper, Body Graphics, Chrome Grille, Roof Antenna, Rear Window Sunshade, Front Skid Plate"
+                  value={formState.exterior?.additionalExteriorFeatures || ""}
+                  onChange={(e) =>
+                    handleFieldChange(
+                      "exterior",
+                      "additionalExteriorFeatures",
+                      e.target.value
+                    )
+                  }
+                />
+              </FormField>
+            </div>
           </div>
         );
 
@@ -1947,7 +2143,7 @@ export default function NewCarPage() {
                   onChange={(e) =>
                     handleFieldChange(
                       "safety",
-                      "bharatNcapChildSafetyRating", // Fix: Using correct property name
+                      "bharatNcapChildSafetyRating",
                       e.target.value
                     )
                   }
@@ -2253,6 +2449,30 @@ export default function NewCarPage() {
     colorImages,
   ]);
 
+  // First, add a useEffect to automatically set fuel type when car type changes
+  useEffect(() => {
+    // When car type is set to "Electric", automatically set fuel type to "Electric"
+    if (formState.basicInfo?.carType === "Electric") {
+      updateFormSection("fuelPerformance", { fuelType: "Electric" });
+    }
+  }, [formState.basicInfo?.carType, updateFormSection]);
+
+  // Update the useEffect that watches for electric vehicle type changes
+  useEffect(() => {
+    // When car type is set to "Electric", automatically set fuel type to "Electric"
+    // and set gearbox to "Single Speed" for electric vehicles
+    if (formState.fuelPerformance?.fuelType === "Electric") {
+      // Set fuel type to Electric if not already set
+      updateFormSection("fuelPerformance", { fuelType: "Electric" });
+
+      // Set transmission type and gearbox to Single Speed for electric vehicles
+      updateFormSection("engineTransmission", {
+        gearbox: "Single Speed",
+        transmissionType: "Automatic",
+      });
+    }
+  }, [formState.fuelPerformance?.fuelType, updateFormSection]);
+
   // Preview mode
   if (previewMode) {
     return (
@@ -2264,7 +2484,6 @@ export default function NewCarPage() {
               Back to Edit
             </Button>
           </div>
-
           <CarPreview
             onBackToEdit={togglePreviewMode}
             onSubmit={() => handleSubmit(new Event("submit") as any)}
@@ -2285,40 +2504,40 @@ export default function NewCarPage() {
           }
           return handleSubmitForm(e);
         }}
-        className="max-w-full mx-auto"
       >
-        <div className="flex gap-6">
-          {/* Side Panel */}
-          <div className="w-64 flex-shrink-0 bg-card p-4 rounded-lg border">
-            <nav className="space-y-2 sticky top-4">
-              {CAR_SECTIONS.map((section) => (
-                <SectionButton
-                  key={section.id}
-                  section={section}
-                  active={activeSection}
-                  completed={sectionCompletionStatus[section.id]}
-                  onClick={setActiveSection}
-                />
-              ))}
-            </nav>
-          </div>
-          {/* Main Form Content */}
-          <div className="flex-1 bg-card p-6 rounded-lg border">
-            <h1 className="text-2xl font-bold text-foreground mb-6">
-              Add New Car
-            </h1>
-            <div className="space-y-6">{renderSectionFields()}</div>
-            {/* Navigation Buttons */}
-            <div className="mt-6 flex justify-between gap-4">
-              <Button
-                type="button"
-                onClick={handlePreviousSection}
-                disabled={activeSection === CAR_SECTIONS[0].id}
-                variant="outline"
-              >
-                Previous
-              </Button>
-              {getNavigationButtons()}
+        <div className="max-w-full mx-auto">
+          <div className="flex gap-6">
+            {/* Side Panel */}
+            <div className="w-64 flex-shrink-0 bg-card p-4 rounded-lg border">
+              <nav className="space-y-2 sticky top-4">
+                {CAR_SECTIONS.map((section) => (
+                  <SectionButton
+                    key={section.id}
+                    section={section}
+                    active={activeSection}
+                    completed={sectionCompletionStatus[section.id]}
+                    onClick={handleSectionChange}
+                  />
+                ))}
+              </nav>
+            </div>
+            {/* Main Form Content */}
+            <div className="flex-1 bg-card p-6 rounded-lg border">
+              <h1 className="text-2xl font-bold text-foreground mb-6">
+                Add New Car
+              </h1>
+              <div className="space-y-6">{renderSectionFields()}</div>
+              <div className="mt-6 flex justify-between gap-4">
+                <Button
+                  type="button"
+                  onClick={handlePreviousSection}
+                  disabled={activeSection === CAR_SECTIONS[0].id}
+                  variant="outline"
+                >
+                  Previous
+                </Button>
+                {getNavigationButtons()}
+              </div>
             </div>
           </div>
         </div>

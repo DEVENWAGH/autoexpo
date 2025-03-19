@@ -17,8 +17,6 @@ const uploadImage = async (file: File | string): Promise<string> => {
     if (file.startsWith('data:')) {
       console.log('Processing data URL for upload');
       try {
-        // Extract just the base64 part removing the header
-        const base64Data = file.split(',')[1];
         
         // Upload to ImageKit
         const upload = await imageKit.upload({
@@ -293,7 +291,7 @@ export async function GET(req: NextRequest) {
   } catch (error) {
     console.error('API Error getting vehicles:', error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to get vehicles' }, 
+      { error: error instanceof Error ? error.message : 'Failed to get vehicles' },
       { status: 500 }
     );
   }

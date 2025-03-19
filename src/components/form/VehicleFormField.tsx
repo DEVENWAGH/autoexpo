@@ -11,6 +11,13 @@ interface VehicleFormFieldProps {
   children?: React.ReactNode;
   placeholder?: string;
   options?: string[];
+  value?: string | number | boolean;
+  disabled?: boolean;
+  onChange?: (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+    >
+  ) => void;
 }
 
 export const VehicleFormField: React.FC<VehicleFormFieldProps> = ({
@@ -22,14 +29,61 @@ export const VehicleFormField: React.FC<VehicleFormFieldProps> = ({
   children,
   placeholder,
   options,
+  value,
+  disabled = false,
+  onChange,
 }) => {
   const {
     register,
     formState: { errors },
     customSetValue,
+    getValues,
   } = useCarForm();
   const fieldPath = `${section}.${field}`;
   const error = errors[section]?.[field];
+
+  // Process placeholder for display
+  const processPlaceholder = (text: string | undefined): string => {
+    if (!text) return "";
+    return text.replace(/\\n/g, "\n");
+  };
+
+  const displayPlaceholder = processPlaceholder(placeholder);
+
+  // Create custom key handler specifically for tab key functionality
+  const handleKeyDown = (
+    e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    // If Tab key is pressed and the input is empty
+    if (e.key === "Tab") {
+      const input = e.target as HTMLInputElement | HTMLTextAreaElement;
+      if ((!input.value || input.value === "") && placeholder) {
+        // Prevent the default tab behavior to avoid losing focus
+        e.preventDefault();
+
+        // Process placeholder - replace escaped newlines with actual newlines
+        const processedPlaceholder = placeholder
+          .toString()
+          .replace(/\\n/g, "\n");
+
+        // Set value using customSetValue
+        customSetValue(section as any, field, processedPlaceholder);
+
+        // Find the next focusable element and focus it
+        const focusableElements =
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+        const allFocusable = Array.from(
+          document.querySelectorAll(focusableElements)
+        );
+        const currentIndex = allFocusable.indexOf(input);
+        const nextElement = allFocusable[currentIndex + 1] as HTMLElement;
+
+        if (nextElement) {
+          nextElement.focus();
+        }
+      }
+    }
+  };
 
   // Render different input types based on the type prop
   const renderInput = () => {
@@ -40,12 +94,17 @@ export const VehicleFormField: React.FC<VehicleFormFieldProps> = ({
         <select
           id={fieldPath}
           {...register(fieldPath as any)}
-          onChange={(e) =>
-            customSetValue(section as any, field, e.target.value)
-          }
+          onChange={(e) => {
+            customSetValue(section as any, field, e.target.value);
+            // Call the external onChange handler if provided
+            if (onChange) onChange(e);
+          }}
+          value={value !== undefined ? value : getValues(fieldPath)}
+          disabled={disabled}
           className={cn(
             "mt-1 block w-full rounded border border-input bg-background px-3 py-2",
-            error && "border-destructive"
+            error && "border-destructive",
+            disabled && "opacity-50 cursor-not-allowed"
           )}
         >
           <option value="">{`Select ${label}`}</option>
@@ -64,9 +123,11 @@ export const VehicleFormField: React.FC<VehicleFormFieldProps> = ({
           type="checkbox"
           id={fieldPath}
           {...register(fieldPath as any)}
-          onChange={(e) =>
-            customSetValue(section as any, field, e.target.checked)
-          }
+          onChange={(e) => {
+            customSetValue(section as any, field, e.target.checked);
+            // Call the external onChange handler if provided
+            if (onChange) onChange(e);
+          }}
           className={cn(
             "rounded border-input bg-background text-primary",
             error && "border-destructive"
@@ -80,11 +141,14 @@ export const VehicleFormField: React.FC<VehicleFormFieldProps> = ({
         <textarea
           id={fieldPath}
           {...register(fieldPath as any)}
-          onChange={(e) =>
-            customSetValue(section as any, field, e.target.value)
-          }
-          placeholder={placeholder}
+          onChange={(e) => {
+            customSetValue(section as any, field, e.target.value);
+            // Call the external onChange handler if provided
+            if (onChange) onChange(e);
+          }}
+          placeholder={displayPlaceholder}
           rows={4}
+          onKeyDown={handleKeyDown}
           className={cn(
             "mt-1 block w-full rounded border border-input bg-background px-3 py-2",
             error && "border-destructive"
@@ -99,8 +163,13 @@ export const VehicleFormField: React.FC<VehicleFormFieldProps> = ({
         type={type}
         id={fieldPath}
         {...register(fieldPath as any)}
-        onChange={(e) => customSetValue(section as any, field, e.target.value)}
-        placeholder={placeholder}
+        onChange={(e) => {
+          customSetValue(section as any, field, e.target.value);
+          // Call the external onChange handler if provided
+          if (onChange) onChange(e);
+        }}
+        placeholder={displayPlaceholder}
+        onKeyDown={handleKeyDown}
         className={cn(
           "mt-1 block w-full rounded border border-input bg-background px-3 py-2",
           error && "border-destructive"

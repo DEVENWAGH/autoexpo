@@ -18,10 +18,10 @@ export interface ICar extends Document {
     displacement: number;
     maxPower: string;
     maxTorque: string;
-    cylinders?: number;
-    valvesPerCylinder?: number;
+    cylinders?: number;      // Optional for all cars, especially electric
+    valvesPerCylinder?: number; // Optional for all cars, especially electric
     transmissionType: string;
-    gearbox: string;
+    gearbox?: string;        // Optional for electric cars
     driveType: string;
     turboCharger?: string;
   };
@@ -33,6 +33,14 @@ export interface ICar extends Document {
     topSpeed?: number;
     acceleration?: number;
     emissionNorm?: string;
+    electricRange?: string;
+    batteryCapacity?: string;
+    chargingTimeDC?: string;
+    chargingTimeAC?: string;
+    chargingPort?: string;
+    chargingOptions?: string;
+    regenerativeBraking?: string;
+    regenerativeBrakingLevels?: number;
   };
   dimensionsCapacity: {
     length?: number;
@@ -54,6 +62,7 @@ export interface ICar extends Document {
     steeringType?: string;
     steeringColumn?: string;
     steeringGearType?: string;
+    turningRadius?: number; // Added this line for turning radius
     frontBrakeType?: string;
     rearBrakeType?: string;
     frontWheelSize?: number;
@@ -186,10 +195,10 @@ const CarSchema = new Schema({
     displacement: { type: Number },
     maxPower: { type: String, required: true },
     maxTorque: { type: String, required: true },
-    cylinders: { type: Number },
-    valvesPerCylinder: { type: Number },
+    cylinders: { type: Number },  // Already optional
+    valvesPerCylinder: { type: Number },  // Already optional
     transmissionType: { type: String },
-    gearbox: { type: String },
+    gearbox: { type: String },  // Already optional
     driveType: { type: String },
     turboCharger: { type: String }
   },
@@ -200,7 +209,15 @@ const CarSchema = new Schema({
     highwayMileage: { type: String },
     topSpeed: { type: Number },
     acceleration: { type: Number },
-    emissionNorm: { type: String }
+    emissionNorm: { type: String },
+    electricRange: { type: String },        // Range in km (e.g., "557 - 683 km")
+    batteryCapacity: { type: String },      // Capacity in kWh (e.g., "59 - 79 kWh") 
+    chargingTimeDC: { type: String },       // DC charging time
+    chargingTimeAC: { type: String },       // AC charging time
+    chargingPort: { type: String },
+    chargingOptions: { type: String },
+    regenerativeBraking: { type: String },
+    regenerativeBrakingLevels: { type: Number }
   },
   dimensionsCapacity: {
     length: { type: Number },
@@ -222,6 +239,7 @@ const CarSchema = new Schema({
     steeringType: { type: String },
     steeringColumn: { type: String },
     steeringGearType: { type: String },
+    turningRadius: { type: Number }, // Added this line for turning radius
     frontBrakeType: { type: String },
     rearBrakeType: { type: String },
     frontWheelSize: { type: Number },
@@ -334,6 +352,20 @@ const CarSchema = new Schema({
   createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true }
 }, {
   timestamps: true
+});
+
+// Add a pre-save middleware to clean up electric car data
+CarSchema.pre('save', function(next) {
+  // If this is an electric vehicle, ensure cylinder-related fields are removed
+  if (this.fuelPerformance?.fuelType === "Electric") {
+    // Explicitly set these fields to undefined
+    if (this.engineTransmission) {
+      this.engineTransmission.cylinders = undefined;
+      this.engineTransmission.valvesPerCylinder = undefined;
+      this.engineTransmission.gearbox = undefined;
+    }
+  }
+  next();
 });
 
 export const Car = mongoose.models.Car as mongoose.Model<ICar> || mongoose.model<ICar>("Car", CarSchema);

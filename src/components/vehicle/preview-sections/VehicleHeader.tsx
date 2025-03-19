@@ -60,6 +60,11 @@ export const VehicleHeader: React.FC<VehicleHeaderProps> = ({ data }) => {
                 {data.basicInfo.bikeType}
               </span>
             )}
+            {data.fuelPerformance?.fuelType === "Electric" && (
+              <span className="inline-block bg-green-800 rounded px-2 py-1 text-xs mr-2">
+                Electric
+              </span>
+            )}
           </div>
         </div>
         <div className="mt-4 md:mt-0 text-right">
