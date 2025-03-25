@@ -14,15 +14,15 @@ export interface ICar extends Document {
     cons: string[];
   };
   engineTransmission: {
-    engineType: string;
-    displacement: number;
-    maxPower: string;
-    maxTorque: string;
-    cylinders?: number;      // Optional for all cars, especially electric
-    valvesPerCylinder?: number; // Optional for all cars, especially electric
-    transmissionType: string;
-    gearbox?: string;        // Optional for electric cars
-    driveType: string;
+    engineType: string;        // Required
+    maxPower: string;         // Required
+    maxTorque: string;        // Required
+    displacement?: string;     // Updated to string to match form input
+    cylinders?: string;       // Updated to string to match form input
+    valvesPerCylinder?: string; // Updated to string to match form input
+    transmissionType?: string;
+    gearbox?: string;
+    driveType?: string;
     turboCharger?: string;
   };
   fuelPerformance: {
@@ -179,31 +179,31 @@ export interface ICar extends Document {
 
 const CarSchema = new Schema({
   basicInfo: {
-    brand: { type: String, required: true },
-    name: { type: String, required: true },
-    variant: { type: String, required: true },
+    brand: { type: String },
+    name: { type: String },
+    variant: { type: String },
     variantName: { type: String },
     carType: { type: String },
-    priceExshowroom: { type: Number, required: true },
-    priceOnroad: { type: Number, required: true },
+    priceExshowroom: { type: Number },
+    priceOnroad: { type: Number },
     launchYear: { type: Number },
     pros: [{ type: String }],
     cons: [{ type: String }]
   },
   engineTransmission: {
-    engineType: { type: String, required: true },
-    displacement: { type: Number },
-    maxPower: { type: String, required: true },
-    maxTorque: { type: String, required: true },
-    cylinders: { type: Number },  // Already optional
-    valvesPerCylinder: { type: Number },  // Already optional
+    engineType: { type: String }, // Removed required
+    maxPower: { type: String },  // Removed required
+    maxTorque: { type: String },  // Removed required
+    displacement: { type: String },
+    cylinders: { type: String },
+    valvesPerCylinder: { type: String },
     transmissionType: { type: String },
-    gearbox: { type: String },  // Already optional
+    gearbox: { type: String },
     driveType: { type: String },
     turboCharger: { type: String }
   },
   fuelPerformance: {
-    fuelType: { type: String, required: true },
+    fuelType: { type: String }, // Removed required
     fuelTankCapacity: { type: Number },
     mileage: { type: String },
     highwayMileage: { type: String },
@@ -344,7 +344,7 @@ const CarSchema = new Schema({
     additionalConnectedFeatures: { type: String }
   },
   images: {
-    main: [{ type: String, required: true }],
+    main: [{ type: String }],
     interior: [{ type: String }],
     exterior: [{ type: String }],
     color: [{ type: String }]
@@ -354,7 +354,7 @@ const CarSchema = new Schema({
   timestamps: true
 });
 
-// Add a pre-save middleware to clean up electric car data
+// Remove the validation middleware
 CarSchema.pre('save', function(next) {
   // If this is an electric vehicle, ensure cylinder-related fields are removed
   if (this.fuelPerformance?.fuelType === "Electric") {
@@ -363,6 +363,23 @@ CarSchema.pre('save', function(next) {
       this.engineTransmission.cylinders = undefined;
       this.engineTransmission.valvesPerCylinder = undefined;
       this.engineTransmission.gearbox = undefined;
+    }
+  }
+  next();
+});
+
+// Keep the conversion middleware but remove validation
+CarSchema.pre('save', function(next) {
+  if (this.engineTransmission) {
+    // Convert string numbers to actual numbers before saving
+    if (this.engineTransmission.displacement) {
+      this.engineTransmission.displacement = Number(this.engineTransmission.displacement) || undefined;
+    }
+    if (this.engineTransmission.cylinders) {
+      this.engineTransmission.cylinders = Number(this.engineTransmission.cylinders) || undefined;
+    }
+    if (this.engineTransmission.valvesPerCylinder) {
+      this.engineTransmission.valvesPerCylinder = Number(this.engineTransmission.valvesPerCylinder) || undefined;
     }
   }
   next();

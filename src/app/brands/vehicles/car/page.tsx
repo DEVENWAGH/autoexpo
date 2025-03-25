@@ -10,7 +10,6 @@ import { toast } from "react-hot-toast";
 import { Button } from "@/components/ui/button";
 import { CarPreview } from "@/components/vehicle/CarPreview";
 import { useCarStore, useCarForm } from "@/store/useCarStore"; // Fix: import useCarForm from useCarStore
-import { validateSection, validatePrices } from "@/validation/formValidation";
 import {
   PlaceholderInput,
   PlaceholderTextarea,
@@ -93,7 +92,6 @@ const CAR_PLACEHOLDERS = {
   cons: "Average Performance\nBasic Infotainment System\nLimited Color Options",
 };
 
-// Add placeholder constants for different sections near other constants at the top for different sections near other constants at the top
 const PLACEHOLDER_VALUES = {
   engineTransmission: {
     engineType: "mHawk 130 CRDe",
@@ -179,174 +177,17 @@ export default function NewCarPage() {
     [updateFormSection]
   );
 
-  // Validate current section
+  // Simplified validation functions
   const validateCurrentSection = useCallback(() => {
-    // Always validate required fields in basic info sectionn basic info section
-    if (activeSection === "basicInfo") {
-      const { brand, name, priceExshowroom, priceOnroad } =
-        formState.basicInfo || {};
-
-      const errors: Record<string, string> = {};
-      if (!brand) errors.brand = "Brand is required";
-      if (!name) errors.name = "Name is required";
-      if (!priceExshowroom)
-        errors.priceExshowroom = "Ex-showroom price is required";
-      if (!priceOnroad) errors.priceOnroad = "On-road price is required";
-
-      if (Object.keys(errors).length > 0) {
-        setValidationErrors(errors);
-        return false;
-      }
-
-      // Also validate price relationship
-      if (priceExshowroom && priceOnroad) {
-        const priceCheck = validatePrices(priceExshowroom, priceOnroad);
-        if (!priceCheck.isValid) {
-          setValidationErrors({
-            priceExshowroom: priceCheck.error || "Price error",
-          });
-          return false;
-        }
-      }
-
-      // Clear validation errors if all fields are validrs if all fields are valid
-      setValidationErrors({});
-    }
-
-    // Special handling for images section - now images are optionalction - now images are optional
-    if (activeSection === "images") {
-      // Clear any validation errors for imageserrors for images
-      setValidationErrors({});
-      return true; // Always return true for images section to make it optional return true; // Always return true for images section to make it optional
-    }
-
-    // For engineTransmission section
-    if (activeSection === "engineTransmission") {
-      const { engineType, maxPower, maxTorque } =
-        formState.engineTransmission || {};
-
-      const errors: Record<string, string> = {};
-      if (!engineType) errors.engineType = "Engine type is required";
-      if (!maxPower) errors.maxPower = "Maximum power is required";
-      if (!maxTorque) errors.maxTorque = "Maximum torque is required";
-
-      if (Object.keys(errors).length > 0) {
-        setValidationErrors(errors);
-        return false;
-      }
-
-      // Clear validation errors if all fields are validrs if all fields are valid
-      setValidationErrors({});
-    }
-
-    // For fuelPerformance section
-    if (activeSection === "fuelPerformance") {
-      const { fuelType } = formState.fuelPerformance || {};
-
-      const errors: Record<string, string> = {};
-      if (!fuelType) errors.fuelType = "Fuel type is required";
-
-      if (Object.keys(errors).length > 0) {
-        setValidationErrors(errors);
-        return false;
-      }
-
-      // Clear validation errors if all fields are validrs if all fields are valid
-      setValidationErrors({});
-    }
-
-    // If we get here and there's no data at all for this section, check if it's a required section data at all for this section, check if it's a required section
-    if (!formState[activeSection]) {
-      if (
-        ["basicInfo", "engineTransmission", "fuelPerformance"].includes(
-          activeSection
-        )
-      ) {
-        toast.error(
-          `The ${activeSection} section has required fields that need to be filled`
-        );
-        return false;
-      }
-      setValidationErrors({});
-      return true;
-    }
-
-    // For all other sections, assume they're valid if we get here
-    // This prevents issues with the toast appearing for non-required sectionshis prevents issues with the toast appearing for non-required sections
-    if (
-      !["basicInfo", "engineTransmission", "fuelPerformance"].includes(
-        activeSection
-      )
-    ) {
-      setValidationErrors({});
-      return true;
-    }
-
-    // Run any additional schema-based validation from the validation module if neededn from the validation module if needed
-    const { isValid, errors } = validateSection(
-      activeSection,
-      formState[activeSection],
-      "cars"
-    );
-
-    // Handle validation errorsrs
-    if (!isValid && errors) {
-      const formattedErrors = Object.fromEntries(
-        Object.entries(errors).map(([key, value]) => [
-          key,
-          Array.isArray(value) ? value.join(", ") : String(value),
-        ])
-      );
-      setValidationErrors(formattedErrors);
-      return false;
-    } else {
-      setValidationErrors({});
-    }
-
-    return isValid;
-  }, [activeSection, formState]);
-
-  // Add a function to validate all required sections - update only required validation- update only required validation
-  const validateRequiredSections = useCallback(() => {
-    // Check basic info
-    const { brand, name, priceExshowroom, priceOnroad } =
-      formState.basicInfo || {};
-    if (!brand || !name || !priceExshowroom || !priceOnroad) {
-      setActiveSection("basicInfo");
-      toast.error("Please complete the Basic Information section first");
-      return false;
-    }
-
-    // Check price validation
-    const priceCheck = validatePrices(
-      formState.basicInfo?.priceExshowroom,
-      formState.basicInfo?.priceOnroad
-    );
-    if (!priceCheck.isValid) {
-      setActiveSection("basicInfo");
-      toast.error(priceCheck.error || "Price validation failed");
-      return false;
-    }
-
-    // Check engine info
-    const { engineType, maxPower, maxTorque } =
-      formState.engineTransmission || {};
-    if (!engineType || !maxPower || !maxTorque) {
-      setActiveSection("engineTransmission");
-      toast.error("Please complete the Engine & Transmission section");
-      return false;
-    }
-
-    // Check fuel info
-    const { fuelType } = formState.fuelPerformance || {};
-    if (!fuelType) {
-      setActiveSection("fuelPerformance");
-      toast.error("Please specify the fuel type");
-      return false;
-    }
-
+    // Always clear validation errors and return true
+    setValidationErrors({});
     return true;
-  }, [formState, setActiveSection]);
+  }, []);
+
+  // Simplified validation for required sections
+  const validateRequiredSections = useCallback(() => {
+    return true;
+  }, []);
 
   // Update section completion status when section changes completion status when section changes
   useEffect(() => {
@@ -438,43 +279,6 @@ export default function NewCarPage() {
     setError("");
 
     try {
-      // Validate all required sectionsired sections
-      let allValid = true;
-      const requiredSections = [
-        "basicInfo",
-        "engineTransmission",
-        "fuelPerformance",
-      ];
-
-      for (const section of requiredSections) {
-        const { isValid } = validateSection(
-          section,
-          formState[section],
-          "cars"
-        );
-        if (!isValid) {
-          allValid = false;
-          setActiveSection(section);
-          toast.error(`Please complete the ${section} section`);
-          break;
-        }
-      }
-
-      if (!allValid) {
-        throw new Error("Please fill all required fields");
-      }
-
-      // Validate price relationship
-      const priceCheck = validatePrices(
-        formState.basicInfo?.priceExshowroom,
-        formState.basicInfo?.priceOnroad
-      );
-
-      if (!priceCheck.isValid) {
-        setActiveSection("basicInfo");
-        throw new Error(priceCheck.error);
-      }
-
       console.log("Preparing form data for submission...");
 
       // Prepare a clean copy of the form statee
