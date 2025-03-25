@@ -8,11 +8,13 @@ interface LoanStore {
   downPayment: number;
   interestRate: number;
   loanTerm: number;
+  isYearly: boolean;  // Added isYearly state
   
   setLoanAmount: (amount: number) => void;
   setDownPayment: (amount: number) => void;
   setInterestRate: (rate: number) => void;
   setLoanTerm: (term: number) => void;
+  toggleIsYearly: () => void;  // Added toggleIsYearly function
   reset: () => void;
 }
 
@@ -21,6 +23,7 @@ const initialState = {
   downPayment: 200000,
   interestRate: 8.5,
   loanTerm: 60, // 5 years in months
+  isYearly: false, // Default to showing months
 };
 
 export const useLoanStore = create<LoanStore>()(
@@ -31,6 +34,7 @@ export const useLoanStore = create<LoanStore>()(
       setDownPayment: (amount) => set({ downPayment: amount }),
       setInterestRate: (rate) => set({ interestRate: rate }),
       setLoanTerm: (term) => set({ loanTerm: term }),
+      toggleIsYearly: () => set((state) => ({ isYearly: !state.isYearly })), // Implementation of toggle function
       reset: () => set(initialState)
     }),
     {
@@ -39,7 +43,8 @@ export const useLoanStore = create<LoanStore>()(
         loanAmount: state.loanAmount,
         downPayment: state.downPayment,
         interestRate: state.interestRate,
-        loanTerm: state.loanTerm
+        loanTerm: state.loanTerm,
+        isYearly: state.isYearly  // Include isYearly in persisted state
       }),
       // Enable hydration
       skipHydration: false

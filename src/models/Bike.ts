@@ -26,7 +26,7 @@ export interface IBike extends Document {
   };
   featuresAndSafety: {
     passSwitch?: boolean;
-    ridingModes?: boolean;
+    ridingModes?: string;
     tractionControl?: boolean;
     launchControl?: boolean;
     quickShifter?: boolean;
@@ -125,7 +125,7 @@ const BikeSchema = new Schema({
   },
   featuresAndSafety: {
     passSwitch: { type: Boolean, default: false },
-    ridingModes: { type: Boolean, default: false },
+    ridingModes: { type: String },
     tractionControl: { type: Boolean, default: false },
     launchControl: { type: Boolean, default: false },
     quickShifter: { type: Boolean, default: false },

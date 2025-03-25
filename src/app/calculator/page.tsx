@@ -11,9 +11,9 @@ export default function Calculator() {
     loanAmount,
     interestRate,
     loanTerm,
-    monthlyPayment,
-    totalPayment,
-    totalInterest,
+    monthlyPayment: storeMonthlyPayment,
+    totalPayment: storeTotalPayment,
+    totalInterest: storeTotalInterest,
     downPayment,
     isYearly,
     setLoanAmount,
@@ -21,19 +21,68 @@ export default function Calculator() {
     setLoanTerm,
     setDownPayment,
     toggleIsYearly,
-    calculateLoan,
+    // calculateLoan is removed from here since it doesn't exist
   } = useLoanStore();
+
+  // Add state for calculated values
+  const [monthlyPayment, setMonthlyPayment] = useState(
+    storeMonthlyPayment || 0
+  );
+  const [totalPayment, setTotalPayment] = useState(storeTotalPayment || 0);
+  const [totalInterest, setTotalInterest] = useState(storeTotalInterest || 0);
 
   // Theme handling
   const { theme, resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [isClient, setIsClient] = useState(false);
 
+  // Implement loan calculation function
+  const calculateLoan = () => {
+    // Make sure we're not dividing by zero
+    if (loanAmount <= 0 || interestRate <= 0 || loanTerm <= 0) {
+      setMonthlyPayment(0);
+      setTotalPayment(0);
+      setTotalInterest(0);
+      return;
+    }
+
+    // Calculate the principal amount after down payment
+    const principal = loanAmount - downPayment;
+
+    // Monthly interest rate (convert annual rate to monthly)
+    const monthlyRate = interestRate / 100 / 12;
+
+    // Calculate monthly payment using the loan formula
+    const calculatedMonthlyPayment =
+      (principal * (monthlyRate * Math.pow(1 + monthlyRate, loanTerm))) /
+      (Math.pow(1 + monthlyRate, loanTerm) - 1);
+
+    // Calculate total payment over the loan term
+    const calculatedTotalPayment = calculatedMonthlyPayment * loanTerm;
+
+    // Calculate total interest
+    const calculatedTotalInterest = calculatedTotalPayment - principal;
+
+    // Update state with calculated values
+    setMonthlyPayment(
+      isNaN(calculatedMonthlyPayment) ? 0 : calculatedMonthlyPayment
+    );
+    setTotalPayment(isNaN(calculatedTotalPayment) ? 0 : calculatedTotalPayment);
+    setTotalInterest(
+      isNaN(calculatedTotalInterest) ? 0 : calculatedTotalInterest
+    );
+  };
+
   // Prevent hydration mismatch
   useEffect(() => {
     setMounted(true);
     setIsClient(true);
   }, []);
+
+  // Run calculation whenever loan parameters change
+  useEffect(() => {
+    calculateLoan();
+  }, [loanAmount, interestRate, loanTerm, downPayment]);
 
   // Theme-aware styles
   const isDark = mounted && (theme === "dark" || resolvedTheme === "dark");
@@ -74,6 +123,11 @@ export default function Calculator() {
     : ["#8b5cf6", "#f97316"]; // Light theme colors
 
   const formatIndianNumber = (num: number) => {
+    // Add null/undefined check
+    if (num === undefined || num === null) {
+      return "₹0.00";
+    }
+
     const formatted = num.toFixed(2);
     const [wholePart, decimalPart] = formatted.split(".");
     const lastThree = wholePart.slice(-3);
@@ -86,10 +140,6 @@ export default function Calculator() {
       decimalPart
     );
   };
-
-  useEffect(() => {
-    calculateLoan();
-  }, [loanAmount, interestRate, loanTerm, downPayment, calculateLoan]);
 
   const pieData = [
     { name: "Principal", value: loanAmount - downPayment, id: nanoid() },

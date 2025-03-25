@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { BikePreview } from "@/components/vehicle/BikePreview";
 import { useVehicleStore, BIKE_PLACEHOLDERS } from "@/store/vehicleStore";
 import { validateSection, validatePrices } from "@/validation/formValidation";
+import { vehicleService } from "@/services/vehicleService";
 import {
   PlaceholderInput,
   PlaceholderTextarea,
@@ -291,6 +292,51 @@ export default function NewBikePage() {
     }
   }, [activeSection]);
 
+  // Add a function to validate all required sections
+  const validateRequiredSections = useCallback(() => {
+    // Check basic info
+    const { brand, name, priceExshowroom, priceOnroad } =
+      formState.basicInfo || {};
+    if (!brand || !name || !priceExshowroom || !priceOnroad) {
+      setActiveSection("basicInfo");
+      toast.error("Please complete the Basic Information section first");
+      return false;
+    }
+
+    // Check images
+    if (mainImages.length === 0) {
+      setActiveSection("images");
+      toast.error("Please upload at least one main image");
+      return false;
+    }
+
+    // Check engine info
+    const { engineType, maxPower, maxTorque } =
+      formState.engineTransmission || {};
+    if (!engineType || !maxPower || !maxTorque) {
+      setActiveSection("engineTransmission");
+      toast.error("Please complete the Engine & Transmission section");
+      return false;
+    }
+
+    return true;
+  }, [formState, mainImages, setActiveSection]);
+
+  // Toggle preview mode with validation
+  const togglePreviewMode = useCallback(() => {
+    // Add validation check before showing preview
+    const allSectionsValid = validateRequiredSections();
+    if (!allSectionsValid) {
+      toast.error("Please complete all required fields before previewing");
+      return;
+    }
+
+    setPreviewMode(!previewMode);
+    if (!previewMode) {
+      window.scrollTo(0, 0);
+    }
+  }, [previewMode, validateRequiredSections]);
+
   // Form submission
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -350,51 +396,6 @@ export default function NewBikePage() {
       setIsSubmitting(false);
     }
   };
-
-  // Toggle preview mode with validation
-  const togglePreviewMode = useCallback(() => {
-    // Add validation check before showing preview
-    const allSectionsValid = validateRequiredSections();
-    if (!allSectionsValid) {
-      toast.error("Please complete all required fields before previewing");
-      return;
-    }
-
-    setPreviewMode(!previewMode);
-    if (!previewMode) {
-      window.scrollTo(0, 0);
-    }
-  }, [previewMode, validateRequiredSections]);
-
-  // Add a function to validate all required sections
-  const validateRequiredSections = useCallback(() => {
-    // Check basic info
-    const { brand, name, priceExshowroom, priceOnroad } =
-      formState.basicInfo || {};
-    if (!brand || !name || !priceExshowroom || !priceOnroad) {
-      setActiveSection("basicInfo");
-      toast.error("Please complete the Basic Information section first");
-      return false;
-    }
-
-    // Check images
-    if (mainImages.length === 0) {
-      setActiveSection("images");
-      toast.error("Please upload at least one main image");
-      return false;
-    }
-
-    // Check engine info
-    const { engineType, maxPower, maxTorque } =
-      formState.engineTransmission || {};
-    if (!engineType || !maxPower || !maxTorque) {
-      setActiveSection("engineTransmission");
-      toast.error("Please complete the Engine & Transmission section");
-      return false;
-    }
-
-    return true;
-  }, [formState, mainImages, setActiveSection]);
 
   // Render section fields based on the active section - adapt from existing components
   const renderSectionFields = useCallback(() => {
@@ -841,9 +842,9 @@ export default function NewBikePage() {
         return (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-4">
+              {/* Modified to handle riding modes as a string input */}
               {[
                 "passSwitch",
-                "ridingModes",
                 "tractionControl",
                 "launchControl",
                 "quickShifter",
@@ -889,6 +890,25 @@ export default function NewBikePage() {
                   ))}
                 </select>
               </FormField>
+
+              <FormField label="Riding Modes">
+                <PlaceholderInput
+                  name="ridingModes"
+                  placeholder="Rain, Sport, Urban"
+                  value={formState.featuresAndSafety?.ridingModes || ""}
+                  onChange={(e) =>
+                    handleFieldChange(
+                      "featuresAndSafety",
+                      "ridingModes",
+                      e.target.value
+                    )
+                  }
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Comma-separated list of riding modes
+                </p>
+              </FormField>
+
               <FormField label="Display">
                 <PlaceholderInput
                   name="displayType"
