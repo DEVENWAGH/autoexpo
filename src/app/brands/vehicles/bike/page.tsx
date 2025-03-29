@@ -610,14 +610,14 @@ export default function NewBikePage() {
                 <MultipleImageUpload
                   images={galleryImages}
                   onChange={setGalleryImages}
-                  maxFiles={8}
+                  maxFiles={30}
                   label="Gallery Images (Optional)"
                   usePlaceholder={true}
                   acceptedFileTypes="image/png, image/jpeg, image/webp"
                   defaultSelected={true} // Set default selected to true
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  Upload up to 8 images showcasing the bike
+                  Upload up to 30 images showcasing the bike
                 </p>
               </FormField>
             </div>
@@ -627,14 +627,14 @@ export default function NewBikePage() {
                 <MultipleImageUpload
                   images={colorImages}
                   onChange={setColorImages}
-                  maxFiles={10}
+                  maxFiles={30}
                   label="Color Variants (Optional)"
                   usePlaceholder={true}
                   acceptedFileTypes="image/png, image/jpeg, image/webp"
                   defaultSelected={true} // Set default selected to true
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  Upload images of different color options available
+                  Upload up to 30 images of different color options available
                 </p>
               </FormField>
             </div>

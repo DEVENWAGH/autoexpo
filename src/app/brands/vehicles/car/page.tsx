@@ -635,14 +635,14 @@ export default function NewCarPage() {
                 <MultipleImageUpload
                   images={interiorImages}
                   onChange={setInteriorImages}
-                  maxFiles={8}
+                  maxFiles={30}
                   label="Interior Images"
                   usePlaceholder={true}
                   acceptedFileTypes="image/png, image/jpeg, image/webp"
                   defaultSelected={true} // Set default selected to true
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  Upload up to 8 images showcasing the interior
+                  Upload up to 30 images showcasing the interior
                 </p>
               </FormField>
             </div>
@@ -652,14 +652,14 @@ export default function NewCarPage() {
                 <MultipleImageUpload
                   images={exteriorImages}
                   onChange={setExteriorImages}
-                  maxFiles={8}
+                  maxFiles={30}
                   label="Exterior Images (Optional)"
                   usePlaceholder={true}
                   acceptedFileTypes="image/png, image/jpeg, image/webp"
                   defaultSelected={true} // Set default selected to true
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  Upload up to 8 images showcasing the exterior
+                  Upload up to 30 images showcasing the exterior
                 </p>
               </FormField>
             </div>
@@ -669,14 +669,14 @@ export default function NewCarPage() {
                 <MultipleImageUpload
                   images={colorImages}
                   onChange={setColorImages}
-                  maxFiles={10}
+                  maxFiles={30}
                   label="Color Variants (Optional)"
                   usePlaceholder={true}
                   acceptedFileTypes="image/png, image/jpeg, image/webp"
                   defaultSelected={true} // Set default selected to true
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  Upload images of different color options available
+                  Upload up to 30 images of different color options available
                 </p>
               </FormField>
             </div>
@@ -872,7 +872,7 @@ export default function NewCarPage() {
                   className="mt-1 block w-full rounded border border-input bg-background text-foreground px-3 py-2"
                 >
                   <option value="">Select Drive Type</option>
-                  {["2WD", "4WD"].map((type) => (
+                  {["2WD", "4WD", "FWD"].map((type) => (
                     <option key={type} value={type}>
                       {type}
                     </option>
@@ -1683,9 +1683,11 @@ export default function NewCarPage() {
                 <select
                   name="upholstery"
                   value={formState.interior?.upholstery || "Leatherette"}
-                  onChange={(e) =>
-                    handleFieldChange("interior", "upholstery", e.target.value)
-                  }
+                  onChange={(e) => {
+                    handleFieldChange("interior", "upholstery", e.target.value);
+                    // Log to confirm the value is being updated
+                    console.log("Updated upholstery to:", e.target.value);
+                  }}
                   className="mt-1 block w-full rounded border border-input bg-background text-foreground px-3 py-2"
                 >
                   {["Fabric", "Leatherette", "Leather"].map((type) => (
@@ -1927,6 +1929,7 @@ export default function NewCarPage() {
                   className="mt-1 block w-full rounded border border-input bg-background text-foreground px-3 py-2"
                 >
                   {[
+                    "No Rating",
                     "1 Star",
                     "2 Star",
                     "3 Star",
@@ -1954,6 +1957,7 @@ export default function NewCarPage() {
                   className="mt-1 block w-full rounded border border-input bg-background text-foreground px-3 py-2"
                 >
                   {[
+                    "No Rating",
                     "1 Star",
                     "2 Star",
                     "3 Star",
@@ -2130,7 +2134,7 @@ export default function NewCarPage() {
                   }
                   className="mt-1 block w-full rounded border border-input bg-background text-foreground px-3 py-2"
                 >
-                  {["Front", "Rear", "Front & Rear"].map((type) => (
+                  {["No Speaker", "Front", "Rear", "Front & Rear"].map((type) => (
                     <option key={type} value={type}>
                       {type}
                     </option>
@@ -2276,6 +2280,42 @@ export default function NewCarPage() {
       });
     }
   }, [formState.fuelPerformance?.fuelType, updateFormSection]);
+
+  // In the useEffect section, add a new effect to initialize the upholstery value
+  useEffect(() => {
+    // Initialize default upholstery value if not already set
+    if (!formState.interior?.upholstery) {
+      updateFormSection("interior", { upholstery: "Leatherette" });
+    }
+  }, [formState.interior?.upholstery, updateFormSection]);
+
+  // Add navigation warning to prevent accidental data loss
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      // Only show warning if user has started entering data
+      const hasEnteredData =
+        Object.keys(formState).length > 0 ||
+        mainImages.length > 0 ||
+        interiorImages.length > 0 ||
+        exteriorImages.length > 0 ||
+        colorImages.length > 0;
+
+      if (hasEnteredData) {
+        // Standard way of showing a confirmation dialog
+        e.preventDefault();
+        e.returnValue = ""; // Required for browser compatibility
+        return ""; // Return value is shown in some browsers
+      }
+    };
+
+    // Add the event listener
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    // Clean up
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [formState, mainImages, interiorImages, exteriorImages, colorImages]);
 
   // Preview mode
   if (previewMode) {
