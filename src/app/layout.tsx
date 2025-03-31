@@ -42,7 +42,12 @@ export default function RootLayout({
         >
           <SessionProvider>
             <Theme>
-              <div className="flex items-center justify-center">{children}</div>
+              <div
+                className="flex items-center justify-center"
+                suppressHydrationWarning
+              >
+                {children}
+              </div>
               <ThemeToggle />
               <Toaster
                 position="top-center"

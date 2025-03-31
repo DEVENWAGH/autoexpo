@@ -10,26 +10,25 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    await dbConnect();
-    
     const id = params.id;
-    
-    // Try to find in both models
-    let vehicle = await Car.findById(id);
-    if (!vehicle) {
-      vehicle = await Bike.findById(id);
+
+    if (!id) {
+      return NextResponse.json({ message: "ID is required" }, { status: 400 });
     }
-    
+
+    await dbConnect();
+
+    const vehicle = await Car.findById(id);
+
     if (!vehicle) {
-      return NextResponse.json({ error: 'Vehicle not found' }, { status: 404 });
+      return NextResponse.json({ message: "Vehicle not found" }, { status: 404 });
     }
-    
-    return NextResponse.json(vehicle);
-    
+
+    return NextResponse.json({ vehicle });
   } catch (error) {
-    console.error('API Error getting vehicle:', error);
+    console.error("Error fetching vehicle by ID:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to get vehicle' }, 
+      { message: "Internal server error" },
       { status: 500 }
     );
   }

@@ -84,7 +84,12 @@ export default function GlassContainer() {
   };
 
   // Get price range for a car - prioritize base to top variant range
-  const getPriceRange = (minPrice: number, maxPrice: number, basePrice: number, topPrice: number) => {
+  const getPriceRange = (
+    minPrice: number,
+    maxPrice: number,
+    basePrice: number,
+    topPrice: number
+  ) => {
     // If we have both base and top prices, always show the variant range
     if (basePrice > 0 && topPrice > 0 && basePrice !== topPrice) {
       return `${formatPrice(basePrice)} - ${formatPrice(topPrice)}`;
@@ -140,7 +145,7 @@ export default function GlassContainer() {
                 basePrice: variant === "base" ? price : 0,
                 topPrice: variant === "top" ? price : 0,
                 hasBaseVariant: variant === "base",
-                hasTopVariant: variant === "top"
+                hasTopVariant: variant === "top",
               };
             } else {
               // Update min/max prices
@@ -150,7 +155,7 @@ export default function GlassContainer() {
               if (price > modelGroups[modelKey].maxPrice) {
                 modelGroups[modelKey].maxPrice = price;
               }
-              
+
               // Track specific variant prices
               if (variant === "base") {
                 modelGroups[modelKey].basePrice = price;
@@ -192,8 +197,8 @@ export default function GlassContainer() {
             }
           });
 
-          // Limit to 3 cars
-          setCars(baseModelCars.slice(0, 3));
+          // Limit to 4 cars instead of 3
+          setCars(baseModelCars.slice(0, 4));
         } else {
           setCars([]);
         }
@@ -235,21 +240,28 @@ export default function GlassContainer() {
       </h2>
       <div
         className={`mt-4 w-full rounded-[40px] backdrop-blur-xl border ${containerGradient} p-8`}
+        suppressHydrationWarning
       >
         {isLoading ? (
-          <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+          <div
+            className="flex justify-center items-center h-64"
+            suppressHydrationWarning
+          >
+            <div
+              className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"
+              suppressHydrationWarning
+            ></div>
           </div>
         ) : error ? (
           <div className="text-center py-8 text-red-500">{error}</div>
         ) : (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
               {cars.length > 0 ? (
                 cars.map((car) => (
                   <Card
                     key={car._id}
-                    id={car._id}
+                    id={car._id} // Still pass ID for internal references
                     title={`${car.basicInfo.brand} ${car.basicInfo.name}`}
                     category={
                       car.fuelPerformance?.fuelType === "Electric"
@@ -257,7 +269,12 @@ export default function GlassContainer() {
                         : car.basicInfo.carType || "Car"
                     }
                     price={car.basicInfo.priceExshowroom}
-                    priceRange={getPriceRange(car.minPrice, car.maxPrice, car.basePrice, car.topPrice)}
+                    priceRange={getPriceRange(
+                      car.minPrice,
+                      car.maxPrice,
+                      car.basePrice,
+                      car.topPrice
+                    )}
                     image={car.images?.main?.[0] || "/placeholder.svg"}
                     onFavoriteClick={() => {}}
                   />

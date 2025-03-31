@@ -11,7 +11,7 @@ interface CardProps {
   title: string;
   category: string;
   price: number;
-  priceRange?: string; // New prop for price range
+  priceRange?: string;
   image: string;
   onFavoriteClick: () => void;
 }
@@ -26,6 +26,39 @@ export default function Card({
   onFavoriteClick,
 }: CardProps) {
   const [isFavourite, setIsFavourite] = useState(false);
+
+  // Create SEO-friendly URL
+  const generateSlug = () => {
+    // Split the title (which should be "Brand Model")
+    const titleParts = title.split(" ");
+
+    // Handle multi-word brands (like "Tata Motors")
+    // If the title has more than 2 words, we need to determine which is brand vs model
+    let brandSlug, modelSlug;
+
+    if (titleParts.length <= 2) {
+      // Simple case: "Brand Model"
+      brandSlug = titleParts[0].toLowerCase();
+      modelSlug = titleParts.slice(1).join("-").toLowerCase();
+    } else {
+      // Complex case like "Tata Motors Nexon"
+      // For Tata Motors vehicles, hardcode the brand as "tata-motors"
+      if (title.startsWith("Tata Motors")) {
+        brandSlug = "tata-motors";
+        modelSlug = title
+          .replace("Tata Motors ", "")
+          .toLowerCase()
+          .replace(/\s+/g, "-");
+      } else {
+        // General approach for other brands
+        // Assume first word is brand, rest is model
+        brandSlug = titleParts[0].toLowerCase();
+        modelSlug = titleParts.slice(1).join("-").toLowerCase();
+      }
+    }
+
+    return `/${brandSlug}/${modelSlug}`;
+  };
 
   // Format price for display if no priceRange is provided
   const formatPrice = (price: number) => {
@@ -42,6 +75,8 @@ export default function Card({
     setIsFavourite(!isFavourite);
     onFavoriteClick();
   };
+
+  const cardLink = generateSlug();
 
   return (
     <div className="group relative bg-card rounded-lg shadow-md overflow-hidden transition-shadow duration-300 hover:shadow-lg">
@@ -61,7 +96,7 @@ export default function Card({
       </Button>
 
       {/* Image */}
-      <Link href={`/vehicle/${id}`} className="block h-44 relative">
+      <Link href={cardLink} className="block h-44 relative">
         <Image
           src={image}
           alt={title}
@@ -73,7 +108,7 @@ export default function Card({
 
       {/* Content */}
       <div className="p-4">
-        <Link href={`/vehicle/${id}`}>
+        <Link href={cardLink}>
           <h3 className="text-lg font-semibold mb-1 line-clamp-1 hover:text-primary transition-colors">
             {title}
           </h3>
@@ -83,7 +118,6 @@ export default function Card({
             {category}
           </span>
           <span className="text-sm font-medium">
-            {/* Use priceRange if provided, otherwise format the price */}
             {priceRange || formatPrice(price)}
           </span>
         </div>
