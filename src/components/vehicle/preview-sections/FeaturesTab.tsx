@@ -549,11 +549,6 @@ const getCarCategories = (data: Record<string, any>): FeatureCategory[] => [
         path: "adasFeatures.parkingAssist",
         isBoolean: true,
       },
-      { label: "System Name", path: "adasFeatures.adasSystemName" },
-      {
-        label: "Additional Features",
-        path: "adasFeatures.additionalADASFeatures",
-      },
     ],
   },
 
@@ -625,14 +620,6 @@ const getCarCategories = (data: Record<string, any>): FeatureCategory[] => [
         label: "Geo-fence Alert",
         path: "internetFeatures.geoFenceAlert",
         isBoolean: true,
-      },
-      {
-        label: "Connected Car App",
-        path: "internetFeatures.connectedCarApp",
-      },
-      {
-        label: "Additional Features",
-        path: "internetFeatures.additionalConnectedFeatures",
       },
     ],
   },

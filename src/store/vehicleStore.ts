@@ -44,7 +44,6 @@ export const CAR_PLACEHOLDERS = {
   brand: "",
   variant: "Base",
   launchYear: new Date().getFullYear().toString(),
-  priceOnroad: "1000000",
   priceExshowroom: "850000",
   pros: "Spacious Interior\nFuel Efficient\nAdvanced Safety Features\nComfortable Ride",
   cons: "Average Performance\nBasic Infotainment System\nLimited Color Options",
@@ -55,7 +54,6 @@ export const BIKE_PLACEHOLDERS = {
   brand: "",
   variant: "Base", 
   launchYear: new Date().getFullYear().toString(),
-  priceOnroad: "150000",
   priceExshowroom: "120000",
   pros: "Excellent Mileage\nEasy Handling\nAffordable Maintenance\nSporty Look",
   cons: "Limited Power\nBasic Features\nAverage Build Quality",
@@ -105,5 +103,47 @@ export const useVehicleStore = create<VehicleStore>()(
       // Make sure to hydrate the store from localStorage
       skipHydration: false
     }
+  )
+);
+
+// Update if there's any form state cleaning that needs to handle these fields
+export const useCarStore = create<CarStore>()(
+  persist(
+    (set) => ({
+      ...initialState,
+      updateFormSection: (section, data) => set((state) => {
+        // Preserve existing data by deep cloning the section
+        const currentSectionData = { ...(state.formState[section] || {}) };
+        
+        // Clean up removed fields if they're accidentally provided
+        if (section === "internetFeatures") {
+          // Remove any connectedCarApp or additionalConnectedFeatures properties
+          const { connectedCarApp, additionalConnectedFeatures, ...cleanedData } = data;
+          Object.entries(cleanedData).forEach(([key, value]) => {
+            currentSectionData[key] = value;
+          });
+        } else if (section === "adasFeatures") {
+          // Remove any adasSystemName or additionalADASFeatures properties
+          const { adasSystemName, additionalADASFeatures, ...cleanedData } = data;
+          Object.entries(cleanedData).forEach(([key, value]) => {
+            currentSectionData[key] = value;
+          });
+        } else {
+          // For other sections, proceed normally
+          Object.entries(data).forEach(([key, value]) => {
+            currentSectionData[key] = value;
+          });
+        }
+        
+        return {
+          formState: {
+            ...state.formState,
+            [section]: currentSectionData
+          }
+        };
+      }),
+      // ...existing code...
+    }),
+    // ...existing code...
   )
 );

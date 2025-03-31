@@ -8,7 +8,6 @@ export interface IBike extends Document {
     variantName?: string;
     bikeType?: string;
     priceExshowroom: number;
-    priceOnroad: number;
     launchYear?: number;
     pros: string[];
     cons: string[];
@@ -107,7 +106,6 @@ const BikeSchema = new Schema({
     variantName: { type: String },
     bikeType: { type: String },
     priceExshowroom: { type: Number, required: true },
-    priceOnroad: { type: Number, required: true },
     launchYear: { type: Number },
     pros: [{ type: String }],
     cons: [{ type: String }]

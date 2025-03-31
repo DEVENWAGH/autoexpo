@@ -562,25 +562,7 @@ export default function NewCarPage() {
               )}
             </div>
 
-            <div className="space-y-2">
-              <VehicleFormField
-                section="basicInfo"
-                field="priceOnroad"
-                label="On-Road Price (₹)"
-                type="number"
-                placeholder="1000000"
-                required
-              />
-              {validationErrors["priceOnroad"] ? (
-                <p className="text-xs text-destructive">
-                  {validationErrors["priceOnroad"]}
-                </p>
-              ) : (
-                <p className="text-xs text-muted-foreground">
-                  On-road price includes taxes, registration, and insurance
-                </p>
-              )}
-            </div>
+            {/* On-Road Price field removed */}
 
             <div className="md:col-span-2">
               <VehicleFormField
@@ -1405,7 +1387,7 @@ export default function NewCarPage() {
               />
             </FormField>
 
-            {/* Add Turning Radius field */}
+            {/* Keep only one Turning Radius field */}
             <FormField label="Turning Radius (m)">
               <PlaceholderInput
                 name="turningRadius"
@@ -1455,27 +1437,11 @@ export default function NewCarPage() {
               />
             </FormField>
 
-            <FormField label="Turning Radius (m)">
-              <PlaceholderInput
-                name="turningRadius"
-                placeholder="5.2"
-                type="number"
-                step="0.1"
-                value={formState.suspensionSteeringBrakes?.turningRadius || ""}
-                onChange={(e) =>
-                  handleFieldChange(
-                    "suspensionSteeringBrakes",
-                    "turningRadius",
-                    e.target.value
-                  )
-                }
-              />
-            </FormField>
+            {/* Remove the duplicate Turning Radius field that was here */}
 
             <FormField label="Front Brake Type">
-              <PlaceholderInput
+              <select
                 name="frontBrakeType"
-                placeholder="Disc"
                 value={formState.suspensionSteeringBrakes?.frontBrakeType || ""}
                 onChange={(e) =>
                   handleFieldChange(
@@ -1484,13 +1450,20 @@ export default function NewCarPage() {
                     e.target.value
                   )
                 }
-              />
+                className="mt-1 block w-full rounded border border-input bg-background text-foreground px-3 py-2"
+              >
+                <option value="">Select Brake Type</option>
+                {["Disc", "Drum"].map((type) => (
+                  <option key={type} value={type}>
+                    {type}
+                  </option>
+                ))}
+              </select>
             </FormField>
 
             <FormField label="Rear Brake Type">
-              <PlaceholderInput
+              <select
                 name="rearBrakeType"
-                placeholder="Disc"
                 value={formState.suspensionSteeringBrakes?.rearBrakeType || ""}
                 onChange={(e) =>
                   handleFieldChange(
@@ -1499,7 +1472,15 @@ export default function NewCarPage() {
                     e.target.value
                   )
                 }
-              />
+                className="mt-1 block w-full rounded border border-input bg-background text-foreground px-3 py-2"
+              >
+                <option value="">Select Brake Type</option>
+                {["Disc", "Drum"].map((type) => (
+                  <option key={type} value={type}>
+                    {type}
+                  </option>
+                ))}
+              </select>
             </FormField>
 
             <FormField label="Front Wheel Size">
@@ -1935,7 +1916,6 @@ export default function NewCarPage() {
                     "3 Star",
                     "4 Star",
                     "5 Star",
-                    "Not Rated",
                   ].map((type) => (
                     <option key={type} value={type}>
                       {type}
@@ -1963,7 +1943,6 @@ export default function NewCarPage() {
                     "3 Star",
                     "4 Star",
                     "5 Star",
-                    "Not Rated",
                   ].map((type) => (
                     <option key={type} value={type}>
                       {type}
@@ -2010,39 +1989,6 @@ export default function NewCarPage() {
                   </span>
                 </label>
               ))}
-            </div>
-            <div className="space-y-4">
-              <FormField label="Additional ADAS Features">
-                <PlaceholderTextarea
-                  name="additionalADASFeatures"
-                  placeholder="Enter additional ADAS features..."
-                  value={formState.adasFeatures?.additionalADASFeatures || ""}
-                  onChange={(e) =>
-                    handleFieldChange(
-                      "adasFeatures",
-                      "additionalADASFeatures",
-                      e.target.value
-                    )
-                  }
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Enter each feature on a new line or separated by commas
-                </p>
-              </FormField>
-              <FormField label="ADAS System Name">
-                <PlaceholderInput
-                  name="adasSystemName"
-                  placeholder="e.g. Honda Sensing, Nissan ProPILOT"
-                  value={formState.adasFeatures?.adasSystemName || ""}
-                  onChange={(e) =>
-                    handleFieldChange(
-                      "adasFeatures",
-                      "adasSystemName",
-                      e.target.value
-                    )
-                  }
-                />
-              </FormField>
             </div>
           </div>
         );
@@ -2134,11 +2080,13 @@ export default function NewCarPage() {
                   }
                   className="mt-1 block w-full rounded border border-input bg-background text-foreground px-3 py-2"
                 >
-                  {["No Speaker", "Front", "Rear", "Front & Rear"].map((type) => (
-                    <option key={type} value={type}>
-                      {type}
-                    </option>
-                  ))}
+                  {["No Speaker", "Front", "Rear", "Front & Rear"].map(
+                    (type) => (
+                      <option key={type} value={type}>
+                        {type}
+                      </option>
+                    )
+                  )}
                 </select>
               </FormField>
               <FormField label="Additional Entertainment Features">
@@ -2206,40 +2154,6 @@ export default function NewCarPage() {
                 </label>
               ))}
             </div>
-            <div className="space-y-4">
-              {/* Rest of the internetFeatures section remains unchanged */}
-              <FormField label="Connected Car App">
-                <PlaceholderInput
-                  name="connectedCarApp"
-                  placeholder="e.g. Mahindra AdrenoX, Kia UVO"
-                  value={formState.internetFeatures?.connectedCarApp || ""}
-                  onChange={(e) =>
-                    handleFieldChange(
-                      "internetFeatures",
-                      "connectedCarApp",
-                      e.target.value
-                    )
-                  }
-                />
-              </FormField>
-              <FormField label="Additional Connected Features">
-                <PlaceholderTextarea
-                  name="additionalConnectedFeatures"
-                  placeholder="Connected app services, OTA updates, voice assistant..."
-                  value={
-                    formState.internetFeatures?.additionalConnectedFeatures ||
-                    ""
-                  }
-                  onChange={(e) =>
-                    handleFieldChange(
-                      "internetFeatures",
-                      "additionalConnectedFeatures",
-                      e.target.value
-                    )
-                  }
-                />
-              </FormField>
-            </div>
           </div>
         );
 
@@ -2288,34 +2202,6 @@ export default function NewCarPage() {
       updateFormSection("interior", { upholstery: "Leatherette" });
     }
   }, [formState.interior?.upholstery, updateFormSection]);
-
-  // Add navigation warning to prevent accidental data loss
-  useEffect(() => {
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      // Only show warning if user has started entering data
-      const hasEnteredData =
-        Object.keys(formState).length > 0 ||
-        mainImages.length > 0 ||
-        interiorImages.length > 0 ||
-        exteriorImages.length > 0 ||
-        colorImages.length > 0;
-
-      if (hasEnteredData) {
-        // Standard way of showing a confirmation dialog
-        e.preventDefault();
-        e.returnValue = ""; // Required for browser compatibility
-        return ""; // Return value is shown in some browsers
-      }
-    };
-
-    // Add the event listener
-    window.addEventListener("beforeunload", handleBeforeUnload);
-
-    // Clean up
-    return () => {
-      window.removeEventListener("beforeunload", handleBeforeUnload);
-    };
-  }, [formState, mainImages, interiorImages, exteriorImages, colorImages]);
 
   // Preview mode
   if (previewMode) {

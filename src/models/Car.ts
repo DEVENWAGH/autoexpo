@@ -8,7 +8,6 @@ export interface ICar extends Document {
     variantName?: string;
     carType?: string;
     priceExshowroom: number;
-    priceOnroad: number;
     launchYear?: number;
     pros: string[];
     cons: string[];
@@ -136,8 +135,6 @@ export interface ICar extends Document {
     rearCrossTrafficAlert: boolean;
     driverAttentionMonitor: boolean;
     parkingAssist: boolean;
-    adasSystemName?: string;
-    additionalADASFeatures?: string;
   };
   entertainment: {
     Radio?: boolean;
@@ -163,8 +160,6 @@ export interface ICar extends Document {
     sosButton?: boolean;
     remoteACControl?: boolean;
     geoFenceAlert?: boolean;
-    connectedCarApp?: string;
-    additionalConnectedFeatures?: string;
   };
   images: {
     main: string[];
@@ -185,15 +180,14 @@ const CarSchema = new Schema({
     variantName: { type: String },
     carType: { type: String },
     priceExshowroom: { type: Number },
-    priceOnroad: { type: Number },
     launchYear: { type: Number },
     pros: [{ type: String }],
     cons: [{ type: String }]
   },
   engineTransmission: {
-    engineType: { type: String }, // Removed required
-    maxPower: { type: String },  // Removed required
-    maxTorque: { type: String },  // Removed required
+    engineType: { type: String },
+    maxPower: { type: String },
+    maxTorque: { type: String },
     displacement: { type: String },
     cylinders: { type: String },
     valvesPerCylinder: { type: String },
@@ -203,7 +197,7 @@ const CarSchema = new Schema({
     turboCharger: { type: String }
   },
   fuelPerformance: {
-    fuelType: { type: String }, // Removed required
+    fuelType: { type: String },
     fuelTankCapacity: { type: Number },
     mileage: { type: String },
     highwayMileage: { type: String },
@@ -239,7 +233,7 @@ const CarSchema = new Schema({
     steeringType: { type: String },
     steeringColumn: { type: String },
     steeringGearType: { type: String },
-    turningRadius: { type: Number }, // Added this line for turning radius
+    turningRadius: { type: Number },
     frontBrakeType: { type: String },
     rearBrakeType: { type: String },
     frontWheelSize: { type: Number },
@@ -312,9 +306,7 @@ const CarSchema = new Schema({
     blindSpotDetection: { type: Boolean, default: false },
     rearCrossTrafficAlert: { type: Boolean, default: false },
     driverAttentionMonitor: { type: Boolean, default: false },
-    parkingAssist: { type: Boolean, default: false },
-    adasSystemName: { type: String },
-    additionalADASFeatures: { type: String }
+    parkingAssist: { type: Boolean, default: false }
   },
   entertainment: {
     Radio: { type: Boolean, default: false },
@@ -339,9 +331,7 @@ const CarSchema = new Schema({
     remoteVehicleStart: { type: Boolean, default: false },
     sosButton: { type: Boolean, default: false },
     remoteACControl: { type: Boolean, default: false },
-    geoFenceAlert: { type: Boolean, default: false },
-    connectedCarApp: { type: String },
-    additionalConnectedFeatures: { type: String }
+    geoFenceAlert: { type: Boolean, default: false }
   },
   images: {
     main: [{ type: String }],

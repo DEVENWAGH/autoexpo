@@ -73,6 +73,30 @@ export const interiorSchema = z.object({
   additionalInteriorFeatures: z.string().optional(),
 });
 
+export const adasFeaturesSchema = z.object({
+  forwardCollisionWarning: z.boolean().optional().default(false),
+  automaticEmergencyBraking: z.boolean().optional().default(false),
+  trafficSignRecognition: z.boolean().optional().default(false),
+  laneDepartureWarning: z.boolean().optional().default(false),
+  laneKeepAssist: z.boolean().optional().default(false),
+  adaptiveCruiseControl: z.boolean().optional().default(false),
+  adaptiveHighBeamAssist: z.boolean().optional().default(false),
+  blindSpotDetection: z.boolean().optional().default(false),
+  rearCrossTrafficAlert: z.boolean().optional().default(false),
+  driverAttentionMonitor: z.boolean().optional().default(false),
+  parkingAssist: z.boolean().optional().default(false),
+  // Removed adasSystemName and additionalADASFeatures
+});
+
+export const internetFeaturesSchema = z.object({
+  eCallICall: z.boolean().optional().default(false),
+  remoteVehicleStart: z.boolean().optional().default(false),
+  sosButton: z.boolean().optional().default(false),
+  remoteACControl: z.boolean().optional().default(false),
+  geoFenceAlert: z.boolean().optional().default(false),
+  // Removed connectedCarApp and additionalConnectedFeatures
+});
+
 // And so on for other schemas...
 
 // Complete form schema

@@ -130,32 +130,18 @@ export default function NewBikePage() {
   const validateCurrentSection = useCallback(() => {
     // Always validate required fields in basic info section
     if (activeSection === "basicInfo") {
-      const { brand, name, priceExshowroom, priceOnroad } =
-        formState.basicInfo || {};
+      const { brand, name, priceExshowroom } = formState.basicInfo || {};
 
       const errors: Record<string, string> = {};
       if (!brand) errors.brand = "Brand is required";
       if (!name) errors.name = "Name is required";
       if (!priceExshowroom)
         errors.priceExshowroom = "Ex-showroom price is required";
-      if (!priceOnroad) errors.priceOnroad = "On-road price is required";
 
       if (Object.keys(errors).length > 0) {
         setValidationErrors(errors);
         toast.error("Please fill all required fields marked with *");
         return false;
-      }
-
-      // Also validate price relationship
-      if (priceExshowroom && priceOnroad) {
-        const priceCheck = validatePrices(priceExshowroom, priceOnroad);
-        if (!priceCheck.isValid) {
-          setValidationErrors({
-            priceExshowroom: priceCheck.error || "Price error",
-          });
-          toast.error(priceCheck.error || "Price validation failed");
-          return false;
-        }
       }
 
       // Clear validation errors if all fields are valid
@@ -295,9 +281,8 @@ export default function NewBikePage() {
   // Add a function to validate all required sections
   const validateRequiredSections = useCallback(() => {
     // Check basic info
-    const { brand, name, priceExshowroom, priceOnroad } =
-      formState.basicInfo || {};
-    if (!brand || !name || !priceExshowroom || !priceOnroad) {
+    const { brand, name, priceExshowroom } = formState.basicInfo || {};
+    if (!brand || !name || !priceExshowroom) {
       setActiveSection("basicInfo");
       toast.error("Please complete the Basic Information section first");
       return false;
@@ -500,35 +485,6 @@ export default function NewBikePage() {
                 ) : (
                   <p className="text-xs text-muted-foreground mt-1">
                     Ex-showroom price before taxes
-                  </p>
-                )}
-              </FormField>
-            </div>
-
-            <div className="space-y-2">
-              <FormField label="On-Road Price (₹)" required>
-                <PlaceholderInput
-                  name="priceOnroad"
-                  type="number"
-                  placeholder={BIKE_PLACEHOLDERS.priceOnroad}
-                  value={formState.basicInfo?.priceOnroad || ""}
-                  onChange={(e) =>
-                    handleFieldChange(
-                      "basicInfo",
-                      "priceOnroad",
-                      e.target.value
-                    )
-                  }
-                  min="0"
-                  step="1000"
-                />
-                {validationErrors["priceOnroad"] ? (
-                  <p className="text-xs text-destructive mt-1">
-                    {validationErrors["priceOnroad"]}
-                  </p>
-                ) : (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    On-road price includes taxes, registration, and insurance
                   </p>
                 )}
               </FormField>

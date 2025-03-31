@@ -43,10 +43,5 @@ export const validateSection = (
   return { isValid: true, errors: null };
 };
 
-// Simplify price validation to always return valid
-export const validatePrices = (
-  exShowroom?: string | number,
-  onRoad?: string | number
-) => {
-  return { isValid: true };
-};
+// Remove the validatePrices function or modify it to not require onroad price
+// Remove any other validation related to onroad price

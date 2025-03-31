@@ -10,10 +10,7 @@ export const VehicleHeader: React.FC<VehicleHeaderProps> = ({ data }) => {
   const variantName = data.basicInfo?.variantName || "";
   const variant = data.basicInfo?.variant || "";
 
-  const price = {
-    exShowroom: data.basicInfo?.priceExshowroom,
-    onRoad: data.basicInfo?.priceOnroad,
-  };
+  const price = data.basicInfo?.priceExshowroom;
 
   const formatPrice = (price: string | number | undefined) => {
     if (!price) return "N/A";
@@ -69,12 +66,8 @@ export const VehicleHeader: React.FC<VehicleHeaderProps> = ({ data }) => {
         </div>
         <div className="mt-4 md:mt-0 text-right">
           <div className="text-lg">
-            <span className="text-sm text-gray-300">Ex-Showroom</span>
-            <p className="font-bold">{formatPrice(price.exShowroom)}</p>
-          </div>
-          <div className="text-lg mt-1">
-            <span className="text-sm text-gray-300">On-Road</span>
-            <p className="font-bold">{formatPrice(price.onRoad)}</p>
+            <span className="text-sm text-gray-300">Ex-Showroom Price</span>
+            <p className="font-bold">{formatPrice(price)}</p>
           </div>
         </div>
       </div>
