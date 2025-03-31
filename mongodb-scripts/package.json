@@ -1,0 +1,14 @@
+{
+  "name": "mongodb-scripts",
+  "version": "1.0.0",
+  "description": "MongoDB scripts for the AutoExpo project",
+  "main": "insert-car.js",
+  "scripts": {
+    "insert-car": "node insert-car.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.3.1",
+    "mongodb": "^6.3.0",
+    "mongodb-scripts": "file:"
+  }
+}

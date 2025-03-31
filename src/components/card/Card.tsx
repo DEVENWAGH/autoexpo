@@ -1,85 +1,92 @@
 "use client";
 
+import Link from "next/link";
 import Image from "next/image";
 import { Heart } from "lucide-react";
-import { useTheme } from "next-themes";
-import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { useState } from "react";
 
 interface CardProps {
-  id: number;
+  id: string;
+  title: string;
+  category: string;
+  price: number;
+  priceRange?: string; // New prop for price range
   image: string;
-  name: string;
-  priceRange: string;
-  isFavorite?: boolean;
-  onFavoriteClick: (id: number) => void;
+  onFavoriteClick: () => void;
 }
 
 export default function Card({
   id,
-  image,
-  name,
+  title,
+  category,
+  price,
   priceRange,
-  isFavorite,
+  image,
   onFavoriteClick,
-}: Readonly<CardProps>) {
-  const { theme, resolvedTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
+}: CardProps) {
+  const [isFavourite, setIsFavourite] = useState(false);
 
-  // Prevent hydration mismatch
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  // Format price for display if no priceRange is provided
+  const formatPrice = (price: number) => {
+    if (price >= 10000000) {
+      return `₹${(price / 10000000).toFixed(2)} Cr`;
+    } else if (price >= 100000) {
+      return `₹${(price / 100000).toFixed(2)} L`;
+    } else {
+      return `₹${price.toLocaleString("en-IN")}`;
+    }
+  };
 
-  // Theme-aware styles
-  const cardBg =
-    mounted && (theme === "dark" || resolvedTheme === "dark")
-      ? "bg-gradient-to-r from-gray-800/50 to-gray-900/50 border-gray-700/50"
-      : "bg-gradient-to-r from-gray-100/90 to-gray-200/90 border-gray-300/50";
-
-  const titleTextClass =
-    mounted && (theme === "dark" || resolvedTheme === "dark")
-      ? "text-white"
-      : "text-gray-900";
-
-  const descTextClass =
-    mounted && (theme === "dark" || resolvedTheme === "dark")
-      ? "text-gray-400"
-      : "text-gray-600";
-
-  const buttonClass =
-    mounted && (theme === "dark" || resolvedTheme === "dark")
-      ? "bg-blue-600 hover:bg-blue-700 text-white"
-      : "bg-blue-500 hover:bg-blue-600 text-white";
+  const handleFavoriteClick = () => {
+    setIsFavourite(!isFavourite);
+    onFavoriteClick();
+  };
 
   return (
-    <div
-      className={`rounded-xl overflow-hidden backdrop-blur-sm border transition-all duration-300 hover:shadow-lg ${cardBg}`}
-    >
-      <div className="relative h-48 w-full">
-        <Image src={image} alt={name} fill className="object-cover" />
-        <button
-          onClick={() => onFavoriteClick(id)}
-          className="absolute top-2 right-2 p-2 rounded-full bg-black/50 hover:bg-black/70 transition-colors"
-          aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"}
-        >
-          <Heart
-            className={`w-5 h-5 ${
-              isFavorite ? "fill-red-500 text-red-500" : "text-white"
-            }`}
-          />
-        </button>
-      </div>
-      <div className="p-4">
-        <h3 className={`text-xl font-semibold mb-2 ${titleTextClass}`}>
-          {name}
-        </h3>
-        <p className={`mb-4 ${descTextClass}`}>Price Range: {priceRange}</p>
+    <div className="group relative bg-card rounded-lg shadow-md overflow-hidden transition-shadow duration-300 hover:shadow-lg">
+      {/* Favorite button */}
+      <Button
+        variant="ghost"
+        size="icon"
+        className="absolute right-2 top-2 z-10 rounded-full bg-white/80 backdrop-blur-sm hover:bg-white/90 transition-all duration-300"
+        onClick={handleFavoriteClick}
+      >
+        <Heart
+          size={18}
+          className={
+            isFavourite ? "fill-red-500 text-red-500" : "text-gray-600"
+          }
+        />
+      </Button>
 
-        <button
-          className={`w-full font-semibold py-2 px-4 rounded transition-colors ${buttonClass}`}
-        >
-          Explore
-        </button>
+      {/* Image */}
+      <Link href={`/vehicle/${id}`} className="block h-44 relative">
+        <Image
+          src={image}
+          alt={title}
+          fill
+          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+          className="object-cover transition-transform duration-300 group-hover:scale-105"
+        />
+      </Link>
+
+      {/* Content */}
+      <div className="p-4">
+        <Link href={`/vehicle/${id}`}>
+          <h3 className="text-lg font-semibold mb-1 line-clamp-1 hover:text-primary transition-colors">
+            {title}
+          </h3>
+        </Link>
+        <div className="flex justify-between items-center">
+          <span className="bg-primary/10 text-primary text-xs px-2 py-1 rounded">
+            {category}
+          </span>
+          <span className="text-sm font-medium">
+            {/* Use priceRange if provided, otherwise format the price */}
+            {priceRange || formatPrice(price)}
+          </span>
+        </div>
       </div>
     </div>
   );
