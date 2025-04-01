@@ -19,7 +19,8 @@ export async function GET(req: NextRequest) {
     // Update userId access for Auth.js v5
     const userId = (session.user as any).id;
     
-    const cars = await Car.find({ createdBy: userId }).sort({ createdAt: -1 });
+    const cars = await Car.find({}).sort({ createdAt: -1 });
+    console.log('Found cars:', cars.length);
     const bikes = await Bike.find({ createdBy: userId }).sort({ createdAt: -1 });
     
     return NextResponse.json({ 

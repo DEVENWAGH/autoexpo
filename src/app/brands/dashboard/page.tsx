@@ -113,14 +113,19 @@ const BrandDashboard = () => {
     const fetchVehicles = async () => {
       try {
         const response = await fetch(`/api/vehicles/my-vehicles`);
+        if (!response.ok) {
+          throw new Error(`API error: ${response.status}`);
+        }
+        
         const data = await response.json();
-        if (data.vehicles) {
-          setVehicles(data.vehicles);
-        } else if (activeTab === "cars" && data.cars) {
-          // Handle the response format from my-vehicles endpoint
+        console.log("API response:", data); // Add this to debug
+        
+        if (activeTab === "cars" && data.cars) {
           setVehicles(data.cars);
         } else if (activeTab === "bikes" && data.bikes) {
           setVehicles(data.bikes);
+        } else {
+          setVehicles([]);
         }
       } catch (error) {
         console.error("Failed to fetch vehicles:", error);

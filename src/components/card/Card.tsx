@@ -14,6 +14,7 @@ interface CardProps {
   priceRange?: string;
   image: string;
   onFavoriteClick: () => void;
+  isBookmarked?: boolean;
 }
 
 export default function Card({
@@ -24,6 +25,7 @@ export default function Card({
   priceRange,
   image,
   onFavoriteClick,
+  isBookmarked = false,
 }: CardProps) {
   const [isFavourite, setIsFavourite] = useState(false);
 
@@ -85,13 +87,14 @@ export default function Card({
         variant="ghost"
         size="icon"
         className="absolute right-2 top-2 z-10 rounded-full bg-white/80 backdrop-blur-sm hover:bg-white/90 transition-all duration-300"
-        onClick={handleFavoriteClick}
+        onClick={(e) => {
+          e.preventDefault();
+          handleFavoriteClick();
+        }}
       >
         <Heart
           size={18}
-          className={
-            isFavourite ? "fill-red-500 text-red-500" : "text-gray-600"
-          }
+          className={isBookmarked ? "fill-red-500 text-red-500" : "text-gray-600"}
         />
       </Button>
 

@@ -5,6 +5,7 @@ import Card from "@/components/card/Card";
 import { useTheme } from "next-themes";
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useBookmarkStore, BookmarkedVehicle } from "@/store/useBookmarkStore";
 
 const brunoFont = Bruno_Ace({
   subsets: ["latin"],
@@ -64,6 +65,7 @@ export default function GlassContainer() {
   const [cars, setCars] = useState<GroupedCar[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const { addBookmark, removeBookmark, isBookmarked } = useBookmarkStore();
 
   // Prevent hydration mismatch
   useEffect(() => {
@@ -231,6 +233,31 @@ export default function GlassContainer() {
       ? "text-white hover:text-blue-300"
       : "text-gray-800 hover:text-blue-700";
 
+  // Add bookmark toggle handler
+  const handleBookmarkToggle = (car: GroupedCar) => {
+    if (!car) return;
+
+    const isCurrentlyBookmarked = isBookmarked(car._id);
+
+    if (isCurrentlyBookmarked) {
+      removeBookmark(car._id);
+    } else {
+      // Create the bookmarked vehicle object
+      const bookmarkedVehicle: BookmarkedVehicle = {
+        id: car._id,
+        brand: car.basicInfo?.brand || "Unknown",
+        name: car.basicInfo?.name || "Vehicle",
+        image: car.images?.main?.[0] || "/placeholder.svg",
+        price: car.basicInfo?.priceExshowroom || 0,
+        slug: `${car.basicInfo?.brand?.toLowerCase() || "brand"}/${
+          car.basicInfo?.name?.toLowerCase() || "model"
+        }`,
+      };
+
+      addBookmark(bookmarkedVehicle);
+    }
+  };
+
   return (
     <section className="my-12">
       <h2
@@ -261,7 +288,7 @@ export default function GlassContainer() {
                 cars.map((car) => (
                   <Card
                     key={car._id}
-                    id={car._id} // Still pass ID for internal references
+                    id={car._id}
                     title={`${car.basicInfo.brand} ${car.basicInfo.name}`}
                     category={
                       car.fuelPerformance?.fuelType === "Electric"
@@ -276,7 +303,8 @@ export default function GlassContainer() {
                       car.topPrice
                     )}
                     image={car.images?.main?.[0] || "/placeholder.svg"}
-                    onFavoriteClick={() => {}}
+                    onFavoriteClick={() => handleBookmarkToggle(car)}
+                    isBookmarked={isBookmarked(car._id)}
                   />
                 ))
               ) : (
