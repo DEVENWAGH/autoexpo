@@ -1,14 +1,15 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Share2, Heart } from "lucide-react";
+import { Share2, Heart, ChevronLeft, ChevronRight } from "lucide-react";
 import { formatIndianNumber } from "@/lib/utils";
 import { useBookmarkStore, BookmarkedVehicle } from "@/store/useBookmarkStore";
+import { motion, useAnimation, PanInfo } from "framer-motion";
 
 interface VehicleGlassContainerProps {
   vehicle: any;
@@ -27,13 +28,12 @@ export default function VehicleGlassContainer({
 }: VehicleGlassContainerProps) {
   const { theme, resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
-  const [internalActiveImage, setInternalActiveImage] = useState<string | null>(
-    null
-  );
-  const [activeTab, setActiveTab] = useState<
-    "exterior" | "interior" | "colors"
-  >("exterior");
-
+  const [internalActiveImage, setInternalActiveImage] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"exterior" | "interior" | "colors">("exterior");
+  const [imageIndex, setImageIndex] = useState(0);
+  const [isAnimating, setIsAnimating] = useState(false);
+  const controls = useAnimation();
+  
   // Add bookmark functionality
   const { addBookmark, removeBookmark, isBookmarked } = useBookmarkStore();
   const [isBookmarkedState, setIsBookmarkedState] = useState(false);
@@ -65,12 +65,16 @@ export default function VehicleGlassContainer({
     }
   };
 
+  // Get the current active tab's images
+  const currentTabImages = getCurrentTabImages();
+
   // Use either the prop or internal state
   const currentActiveImage = activeImage || internalActiveImage;
 
   // Handler for thumbnail clicks
-  const handleImageClick = (image: string) => {
+  const handleImageClick = (image: string, index: number) => {
     console.log("Image clicked:", image);
+    setImageIndex(index);
     if (onImageChange) {
       // If we have an external handler, use it
       onImageChange(image);
@@ -80,22 +84,28 @@ export default function VehicleGlassContainer({
     }
   };
 
-  // Initialize with first image when vehicle data is loaded
+  // Initialize with first image when vehicle data is loaded (prioritizing main images)
   useEffect(() => {
-    if (vehicle && !currentActiveImage) {
-      // Set initial active image based on the current tab
+    if (vehicle) {
+      // First try to set the main image
+      if (mainImages.length > 0) {
+        if (onImageChange) {
+          onImageChange(mainImages[0]);
+        } else {
+          setInternalActiveImage(mainImages[0]);
+        }
+        // Then set the active tab that would show this image
+        setActiveTab("exterior");
+        return;
+      }
+      
+      // Otherwise set any available image from the current tab
       const tabImages = getCurrentTabImages();
       if (tabImages.length > 0) {
         if (onImageChange) {
           onImageChange(tabImages[0]);
         } else {
           setInternalActiveImage(tabImages[0]);
-        }
-      } else if (mainImages.length > 0) {
-        if (onImageChange) {
-          onImageChange(mainImages[0]);
-        } else {
-          setInternalActiveImage(mainImages[0]);
         }
       }
     }
@@ -105,7 +115,8 @@ export default function VehicleGlassContainer({
   useEffect(() => {
     const tabImages = getCurrentTabImages();
     if (tabImages.length > 0) {
-      handleImageClick(tabImages[0]);
+      setImageIndex(0);
+      handleImageClick(tabImages[0], 0);
     }
   }, [activeTab]);
 
@@ -114,20 +125,74 @@ export default function VehicleGlassContainer({
     setMounted(true);
   }, []);
 
-  if (!mounted) return null;
+  // Navigation functions for swiping
+  const nextImage = () => {
+    if (isAnimating || currentTabImages.length <= 1) return;
+    
+    const newIndex = (imageIndex + 1) % currentTabImages.length;
+    animateImageChange(-100, newIndex);
+  };
 
-  // Format price to display in Indian format (lakhs/crores)
-  const formatPrice = (price: number | undefined) => {
-    if (!price) return "N/A";
+  const prevImage = () => {
+    if (isAnimating || currentTabImages.length <= 1) return;
+    
+    const newIndex = (imageIndex - 1 + currentTabImages.length) % currentTabImages.length;
+    animateImageChange(100, newIndex);
+  };
 
-    if (price >= 10000000) {
-      return `₹${(price / 10000000).toFixed(2)} Cr`;
-    } else if (price >= 100000) {
-      return `₹${(price / 100000).toFixed(2)} L`;
+  // Animate the image change
+  const animateImageChange = async (direction: number, newIndex: number) => {
+    setIsAnimating(true);
+    
+    // Animate slide out
+    await controls.start({ 
+      x: direction,
+      opacity: 0,
+      transition: { duration: 0.2 }
+    });
+    
+    // Update image
+    setImageIndex(newIndex);
+    handleImageClick(currentTabImages[newIndex], newIndex);
+    
+    // Reset position but keep invisible
+    await controls.start({ 
+      x: -direction,
+      opacity: 0,
+      transition: { duration: 0 }
+    });
+    
+    // Animate slide in
+    await controls.start({ 
+      x: 0,
+      opacity: 1,
+      transition: { duration: 0.2 }
+    });
+    
+    setIsAnimating(false);
+  };
+
+  // Handle drag gestures
+  const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+    const { offset } = info;
+    
+    // If dragged more than 50px horizontally
+    if (Math.abs(offset.x) > 50) {
+      if (offset.x > 0) {
+        prevImage();
+      } else {
+        nextImage();
+      }
     } else {
-      return `₹${price.toLocaleString("en-IN")}`;
+      // Reset position if not dragged enough
+      controls.start({ 
+        x: 0,
+        transition: { duration: 0.2 }
+      });
     }
   };
+
+  if (!mounted) return null;
 
   // Handle bookmark toggle
   const handleBookmarkToggle = () => {
@@ -197,17 +262,46 @@ export default function VehicleGlassContainer({
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-10">
         {/* Left side - Image section */}
         <div className="space-y-4">
-          {/* Main image display */}
+          {/* Main image display with swipe gestures */}
           <div className="relative aspect-[16/9] w-full bg-gray-100 dark:bg-gray-900 rounded-lg overflow-hidden">
-            <Image
-              src={defaultImage}
-              alt={`${vehicle?.basicInfo?.brand || ""} ${
-                vehicle?.basicInfo?.name || ""
-              }`}
-              fill
-              className="object-contain"
-              priority
-            />
+            <motion.div
+              drag="x"
+              dragConstraints={{ left: 0, right: 0 }}
+              onDragEnd={handleDragEnd}
+              animate={controls}
+              initial={{ opacity: 1, x: 0 }}
+              className="w-full h-full"
+            >
+              <Image
+                src={defaultImage}
+                alt={`${vehicle?.basicInfo?.brand || ""} ${
+                  vehicle?.basicInfo?.name || ""
+                }`}
+                fill
+                className="object-contain"
+                priority
+              />
+            </motion.div>
+            
+            {/* Navigation buttons - only show if there are multiple images */}
+            {currentTabImages.length > 1 && (
+              <>
+                <button
+                  onClick={prevImage}
+                  className="absolute left-2 top-1/2 transform -translate-y-1/2 p-2 rounded-full bg-black/30 text-white hover:bg-black/50 transition-colors z-10"
+                  disabled={isAnimating}
+                >
+                  <ChevronLeft size={20} />
+                </button>
+                <button
+                  onClick={nextImage}
+                  className="absolute right-2 top-1/2 transform -translate-y-1/2 p-2 rounded-full bg-black/30 text-white hover:bg-black/50 transition-colors z-10"
+                  disabled={isAnimating}
+                >
+                  <ChevronRight size={20} />
+                </button>
+              </>
+            )}
           </div>
 
           {/* Tabs for different image categories */}
@@ -228,9 +322,9 @@ export default function VehicleGlassContainer({
             {getCurrentTabImages().map((image: string, index: number) => (
               <button
                 key={`${activeTab}-${index}`}
-                onClick={() => handleImageClick(image)}
+                onClick={() => handleImageClick(image, index)}
                 className={`relative h-16 w-24 flex-shrink-0 rounded-md overflow-hidden border-2 transition-all ${
-                  currentActiveImage === image
+                  imageIndex === index
                     ? thumbnailActiveClass
                     : "border-transparent"
                 }`}
@@ -298,7 +392,7 @@ export default function VehicleGlassContainer({
                     Ex-Showroom Price
                   </p>
                   <p className="text-2xl font-bold text-primary">
-                    {formatPrice(vehicle?.basicInfo?.priceExshowroom)}
+                    {formatIndianNumber(vehicle?.basicInfo?.priceExshowroom)}
                   </p>
                 </div>
                 <Button>Get Offers</Button>
