@@ -1,8 +1,31 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { auth } from './auth';
 
 export async function middleware(request: NextRequest) {
+  const session = await auth();
   const url = request.nextUrl.clone();
+
+  // Check if path starts with /admin
+  if (request.nextUrl.pathname.startsWith('/admin')) {
+    // Only admin can access admin routes
+    if (!session || session.user?.role !== 'admin') {
+      return NextResponse.redirect(new URL('/unauthorized', request.url));
+    }
+  }
+  
+  // Check if path starts with /brands
+  if (request.nextUrl.pathname.startsWith('/brands')) {
+    // Skip protection for static brand logo assets
+    if (request.nextUrl.pathname.match(/\/brands\/[^\/]+\.svg$/)) {
+      return NextResponse.next();
+    }
+    
+    // Only admin or Brands can access brand routes
+    if (!session || (session.user?.role !== 'admin' && session.user?.role !== 'Brands')) {
+      return NextResponse.redirect(new URL('/unauthorized', request.url));
+    }
+  }
 
   // Check if the URL matches the old pattern /vehicle/:id
   if (url.pathname.startsWith('/vehicle/')) {
@@ -30,7 +53,7 @@ export async function middleware(request: NextRequest) {
   return NextResponse.next();
 }
 
-// Only run middleware on vehicle routes
+// Configure which routes the middleware should run on
 export const config = {
-  matcher: ['/vehicle/:id*'],
+  matcher: ['/admin/:path*', '/brands/:path*', '/vehicle/:id*'],
 };

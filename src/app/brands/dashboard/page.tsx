@@ -101,11 +101,17 @@ const BrandDashboard = () => {
     setMounted(true);
   }, []);
 
+  // Ensure authenticated and authorized
   useEffect(() => {
     if (status === "loading") return;
 
     if (!session) {
       router.push("/login");
+    } else if (
+      session.user?.role !== "admin" &&
+      session.user?.role !== "Brands"
+    ) {
+      router.push("/unauthorized");
     }
   }, [session, status, router]);
 
@@ -116,10 +122,10 @@ const BrandDashboard = () => {
         if (!response.ok) {
           throw new Error(`API error: ${response.status}`);
         }
-        
+
         const data = await response.json();
         console.log("API response:", data); // Add this to debug
-        
+
         if (activeTab === "cars" && data.cars) {
           setVehicles(data.cars);
         } else if (activeTab === "bikes" && data.bikes) {
