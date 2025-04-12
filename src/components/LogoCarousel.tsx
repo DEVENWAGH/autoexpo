@@ -46,6 +46,9 @@ export default function LogoCarousel({ logos, showTitle = true }: Props) {
   const [failedImages, setFailedImages] = useState<Record<string, boolean>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [processedLogos, setProcessedLogos] = useState<string[]>([]);
+  const [userInteracting, setUserInteracting] = useState(false);
+  const [lastInteraction, setLastInteraction] = useState(0);
+  const autoScrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Update active index when logos change
   useEffect(() => {
@@ -90,25 +93,44 @@ export default function LogoCarousel({ logos, showTitle = true }: Props) {
 
   const handleDragStart = (e: React.MouseEvent | React.TouchEvent) => {
     setIsDragging(true);
+    setUserInteracting(true); // Mark that user is interacting
+    setLastInteraction(Date.now());
     const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
     setStartX(clientX);
+  };
+
+  // Enhanced infinite scroll behavior without animation resets
+  const handleInfiniteScroll = (newIndex: number) => {
+    const totalLength = processedLogos.length;
+
+    if (newIndex >= 2 * totalLength) {
+      // If we've gone beyond the second copy, silently reset to the middle copy
+      return newIndex - totalLength;
+    }
+
+    if (newIndex < 0) {
+      // If we've gone before the first copy, silently jump to the end of the first copy
+      return newIndex + totalLength;
+    }
+
+    return newIndex;
   };
 
   const handleDragMove = (e: React.MouseEvent | React.TouchEvent) => {
     if (!isDragging) return;
 
+    // Reset auto-scroll timer when user is scrolling
+    setLastInteraction(Date.now());
+
     const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
     const diff = startX - clientX;
 
-    // Make scrolling more sensitive
+    // Make scrolling more sensitive but prevent accidental scrolls
     if (Math.abs(diff) > 20) {
-      // Reduced threshold from 50 to 20
       if (diff > 0) {
-        setActiveIndex((prev) => (prev + 1) % processedLogos.length);
+        setActiveIndex((prev) => handleInfiniteScroll(prev + 1));
       } else {
-        setActiveIndex(
-          (prev) => (prev - 1 + processedLogos.length) % processedLogos.length
-        );
+        setActiveIndex((prev) => handleInfiniteScroll(prev - 1));
       }
       setStartX(clientX);
     }
@@ -116,6 +138,15 @@ export default function LogoCarousel({ logos, showTitle = true }: Props) {
 
   const handleDragEnd = () => {
     setIsDragging(false);
+
+    // Set a timeout to reset userInteracting after some inactivity
+    if (autoScrollTimeoutRef.current) {
+      clearTimeout(autoScrollTimeoutRef.current);
+    }
+
+    autoScrollTimeoutRef.current = setTimeout(() => {
+      setUserInteracting(false);
+    }, 3000); // Wait 3 seconds of inactivity before resuming auto-scroll
   };
 
   const getScale = (index: number) => {
@@ -161,15 +192,28 @@ export default function LogoCarousel({ logos, showTitle = true }: Props) {
     return filename.replace(".svg", "").replace(".png", "").replace(".jpg", "");
   };
 
-  // Add auto-scroll animation only if we have enough logos
+  // Auto-scroll animation that respects user interaction
   useEffect(() => {
-    if (isLoading || processedLogos.length <= 1) return; // Don't auto-scroll during loading or with 1 or fewer logos
+    if (isLoading || processedLogos.length <= 1 || userInteracting) return;
+
     const interval = setInterval(() => {
-      setActiveIndex((prev) => (prev + 1) % processedLogos.length);
-    }, 3000); // Change slide every 3 seconds
+      // Only auto-scroll if user hasn't interacted recently
+      if (Date.now() - lastInteraction > 3000) {
+        setActiveIndex((prev) => handleInfiniteScroll(prev + 1));
+      }
+    }, 3000);
 
     return () => clearInterval(interval);
-  }, [processedLogos.length, isLoading]);
+  }, [processedLogos.length, isLoading, userInteracting, lastInteraction]);
+
+  // Clean up any timeouts on unmount
+  useEffect(() => {
+    return () => {
+      if (autoScrollTimeoutRef.current) {
+        clearTimeout(autoScrollTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Handle logo click to navigate to filter page
   const handleLogoClick = (logo: string) => {
@@ -179,6 +223,15 @@ export default function LogoCarousel({ logos, showTitle = true }: Props) {
       // Navigate to cars or bikes page with brand filter
       const path = activeCategory === "cars" ? "/cars" : "/bikes";
       router.push(`${path}?brand=${encodeURIComponent(brandName)}`);
+    }
+  };
+
+  // Update keyboard navigation
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "ArrowLeft") {
+      setActiveIndex((prev) => handleInfiniteScroll(prev - 1));
+    } else if (e.key === "ArrowRight") {
+      setActiveIndex((prev) => handleInfiniteScroll(prev + 1));
     }
   };
 
@@ -203,6 +256,10 @@ export default function LogoCarousel({ logos, showTitle = true }: Props) {
     // Get brand display name for fallbacks
     const brandDisplayName = getBrandDisplayName(logo);
 
+    const normalizedIndex =
+      ((index % processedLogos.length) + processedLogos.length) %
+      processedLogos.length;
+
     if (failedImages[logo]) {
       // Create a placeholder when image fails to load
       return (
@@ -210,11 +267,10 @@ export default function LogoCarousel({ logos, showTitle = true }: Props) {
           key={`${logo}-${index}`}
           className="absolute transition-all duration-500 ease-out"
           style={{
-            transform: `translateX(-50%) scale(${getScale(index % processedLogos.length)})`,
+            transform: `translateX(-50%) scale(${getScale(normalizedIndex)})`,
             left: `${50 + (index - activeIndex) * 12.5}%`,
-            opacity: getOpacity(index % processedLogos.length),
-            zIndex:
-              1000 - Math.abs((index % processedLogos.length) - activeIndex),
+            opacity: getOpacity(normalizedIndex),
+            zIndex: 1000 - Math.abs(normalizedIndex - activeIndex),
           }}
         >
           <div
@@ -233,11 +289,10 @@ export default function LogoCarousel({ logos, showTitle = true }: Props) {
         key={`${logo}-${index}`}
         className="absolute transition-all duration-500 ease-out"
         style={{
-          transform: `translateX(-50%) scale(${getScale(index % processedLogos.length)})`,
+          transform: `translateX(-50%) scale(${getScale(normalizedIndex)})`,
           left: `${50 + (index - activeIndex) * 12.5}%`,
-          opacity: getOpacity(index % processedLogos.length),
-          zIndex:
-            1000 - Math.abs((index % processedLogos.length) - activeIndex),
+          opacity: getOpacity(normalizedIndex),
+          zIndex: 1000 - Math.abs(normalizedIndex - activeIndex),
         }}
         aria-label={`Brand logo ${index + 1}`}
         onClick={() => handleLogoClick(logo)}
@@ -293,18 +348,84 @@ export default function LogoCarousel({ logos, showTitle = true }: Props) {
         onTouchStart={handleDragStart}
         onTouchMove={handleDragMove}
         onTouchEnd={handleDragEnd}
-        onKeyDown={(e) => {
-          if (e.key === "ArrowLeft") {
-            setActiveIndex(
-              (prev) =>
-                (prev - 1 + processedLogos.length) % processedLogos.length
-            );
-          } else if (e.key === "ArrowRight") {
-            setActiveIndex((prev) => (prev + 1) % processedLogos.length);
-          }
-        }}
+        onKeyDown={handleKeyDown}
+        tabIndex={0}
       >
-        <div className="flex items-center justify-center relative h-full">
+        {/* Enhanced navigation arrows with animations */}
+        <button
+          className="absolute left-4 top-1/2 transform -translate-y-1/2 z-[1100] bg-white/80 dark:bg-gray-800/80 rounded-full p-2.5 shadow-lg hover:bg-white dark:hover:bg-gray-700 focus:outline-none transition-all duration-300 ease-out hover:scale-110 active:scale-95 backdrop-blur-sm"
+          onClick={() => {
+            setUserInteracting(true);
+            setLastInteraction(Date.now());
+            setActiveIndex((prev) => handleInfiniteScroll(prev - 1));
+            handleDragEnd(); // Start the timer to reset userInteracting
+          }}
+          aria-label="Previous brand"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-6 w-6"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M15 19l-7-7 7-7"
+            />
+          </svg>
+        </button>
+
+        <button
+          className="absolute right-4 top-1/2 transform -translate-y-1/2 z-[1100] bg-white/80 dark:bg-gray-800/80 rounded-full p-2.5 shadow-lg hover:bg-white dark:hover:bg-gray-700 focus:outline-none transition-all duration-300 ease-out hover:scale-110 active:scale-95 backdrop-blur-sm"
+          onClick={() => {
+            setUserInteracting(true);
+            setLastInteraction(Date.now());
+            setActiveIndex((prev) => handleInfiniteScroll(prev + 1));
+            handleDragEnd(); // Start the timer to reset userInteracting
+          }}
+          aria-label="Next brand"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-6 w-6"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M9 5l7 7-7 7"
+            />
+          </svg>
+        </button>
+
+        {/* Add visual indicators for navigation with increased spacing */}
+        <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-1.5 pb-2">
+          {processedLogos.map((_, idx) => (
+            <button
+              key={idx}
+              onClick={() => {
+                setUserInteracting(true);
+                setLastInteraction(Date.now());
+                setActiveIndex(idx + processedLogos.length); // Position in the middle copy for smooth transitions
+                handleDragEnd();
+              }}
+              className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                idx === activeIndex % processedLogos.length
+                  ? "bg-blue-500 scale-125"
+                  : "bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500"
+              }`}
+              aria-label={`Go to logo ${idx + 1}`}
+            />
+          ))}
+        </div>
+
+        <div className="flex items-center justify-center relative h-full mb-8">
           {isLoading ? (
             <div className="animate-pulse text-center">
               <div className="w-48 h-48 bg-gray-200 dark:bg-gray-700 rounded-lg mx-auto mb-4"></div>
@@ -316,8 +437,8 @@ export default function LogoCarousel({ logos, showTitle = true }: Props) {
           ) : (
             <HydrationFix>
               {processedLogos.length > 0 &&
-                [...processedLogos, ...processedLogos].map((logo, index) =>
-                  renderLogoButton(logo, index)
+                [...processedLogos, ...processedLogos, ...processedLogos].map(
+                  (logo, index) => renderLogoButton(logo, index)
                 )}
             </HydrationFix>
           )}

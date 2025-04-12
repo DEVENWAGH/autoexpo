@@ -194,13 +194,47 @@ export default function ThreeDLogoScroller({
     scene.add(logosGroup);
     camera.position.z = 8;
 
-    // Animation
+    // Animation - improved with smoother rotation
     let animationFrameId: number;
+    let targetRotation = 0;
+    let currentRotation = 0;
+
     function animate() {
       animationFrameId = requestAnimationFrame(animate);
-      logosGroup.rotation.y += 0.005;
+
+      // Create smoother rotation with easing
+      targetRotation += 0.005;
+      currentRotation += (targetRotation - currentRotation) * 0.05;
+      logosGroup.rotation.y = currentRotation;
+
       renderer.render(scene, camera);
     }
+
+    // Improved interaction - allow for manual rotation
+    let isDragging = false;
+    let previousMouseX = 0;
+
+    const handleMouseDown = (event: MouseEvent) => {
+      isDragging = true;
+      previousMouseX = event.clientX;
+    };
+
+    const handleMouseMove = (event: MouseEvent) => {
+      if (!isDragging) return;
+
+      const deltaX = event.clientX - previousMouseX;
+      targetRotation += deltaX * 0.005;
+      previousMouseX = event.clientX;
+    };
+
+    const handleMouseUp = () => {
+      isDragging = false;
+    };
+
+    renderer.domElement.addEventListener("mousedown", handleMouseDown);
+    renderer.domElement.addEventListener("mousemove", handleMouseMove);
+    renderer.domElement.addEventListener("mouseup", handleMouseUp);
+    renderer.domElement.addEventListener("mouseleave", handleMouseUp);
 
     // Handle resize
     function handleResize() {
@@ -263,6 +297,10 @@ export default function ThreeDLogoScroller({
       }
       window.removeEventListener("resize", handleResize);
       renderer.domElement.removeEventListener("click", handleClick);
+      renderer.domElement.removeEventListener("mousedown", handleMouseDown);
+      renderer.domElement.removeEventListener("mousemove", handleMouseMove);
+      renderer.domElement.removeEventListener("mouseup", handleMouseUp);
+      renderer.domElement.removeEventListener("mouseleave", handleMouseUp);
       scene.clear();
     };
   };

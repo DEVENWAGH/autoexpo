@@ -8,6 +8,7 @@ interface LogoStoreState {
   setActiveCategory: (category: string) => void;
   getBrandLogo: (brand: string) => string | undefined;
   getNormalizedBrandName: (brand: string) => string;
+  getFilterBrandName: (brand: string) => string; // Add the missing function
 }
 
 export const useLogoStore = create<LogoStoreState>((set, get) => ({
@@ -42,6 +43,7 @@ export const useLogoStore = create<LogoStoreState>((set, get) => ({
     '/brands/RollsRoyce.svg',
     '/brands/Suzuki.svg',
     '/brands/Tata.svg',
+    '/brands/Mahindra.svg',
   ],
   
   // Updated to include only logos that are likely to exist
@@ -84,6 +86,12 @@ export const useLogoStore = create<LogoStoreState>((set, get) => ({
     
     const normalized = brand.toLowerCase().trim();
     return normalizedMap[normalized] || normalized;
+  },
+  
+  // Add the missing function that was causing the error
+  getFilterBrandName: (brand) => {
+    // Reuse the existing normalization function for consistency
+    return get().getNormalizedBrandName(brand);
   },
   
   setActiveCategory: (category) => set({ activeCategory: category }),
