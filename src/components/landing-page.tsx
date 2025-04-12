@@ -11,8 +11,7 @@ import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
 
 export default function LandingPage() {
-  const { activeCategory, carLogos, bikeLogos } = useLogoStore();
-  const currentLogos = activeCategory === "cars" ? carLogos : bikeLogos;
+  const { allLogos, carLogos } = useLogoStore();
   const { theme, resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [use3D, setUse3D] = useState(false);
@@ -38,35 +37,19 @@ export default function LandingPage() {
     checkDeviceCapability();
   }, []);
 
-  // Function to safely get a subset of logos to prevent overwhelming the browser
-  const getSafeLogoSet = () => {
-    const maxLogos = 15; // Limit to 15 logos for better performance
-    if (currentLogos.length <= maxLogos) return currentLogos;
-
-    // Get evenly distributed subset
-    const result = [];
-    const step = Math.floor(currentLogos.length / maxLogos);
-    for (let i = 0; i < maxLogos; i++) {
-      result.push(currentLogos[i * step]);
-    }
-    return result;
-  };
-
+  // Pass ALL logos to the carousel - don't filter or limit them
   return (
     <div className="w-full min-h-screen bg-white dark:bg-black text-black dark:text-white overflow-x-hidden">
       <Navbar />
       <main className="container mx-auto px-4 max-w-[1440px]">
         <Hero />
-        {/* Use LogoCarousel by default */}
-        <LogoCarousel logos={getSafeLogoSet()} />
+        {/* Pass all logos directly without filtering */}
+        <LogoCarousel logos={allLogos} showTitle={true} />
 
         {/* Only show 3D version if enabled and user has opted in */}
         {mounted && use3D && isHighEndDevice && (
           <div className="mt-12">
-            <h2 className="text-xl font-bold text-center mb-4">
-              3D Logo Explorer
-            </h2>
-            <ThreeDLogoScroller logos={getSafeLogoSet()} />
+            <ThreeDLogoScroller logos={allLogos} showTitle={true} />
           </div>
         )}
 

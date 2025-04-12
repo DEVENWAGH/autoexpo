@@ -5,12 +5,21 @@ import * as THREE from "three";
 import { useRouter } from "next/navigation";
 import { useLogoStore } from "@/store/useLogoStore";
 import { getBrandNameFromLogo } from "@/utils/brandNameMapping";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 interface Props {
-  readonly logos: readonly string[];
+  readonly logos?: readonly string[];
+  readonly showTitle?: boolean;
 }
 
-export default function ThreeDLogoScroller({ logos }: Readonly<Props>) {
+export default function ThreeDLogoScroller({
+  logos,
+  showTitle = true,
+}: Readonly<Props>) {
+  const logoStore = useLogoStore();
+  // Use provided logos or all logos from the store
+  const allLogos = logos || logoStore.allLogos;
+
   const containerRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const activeCategory = useLogoStore((state) => state.activeCategory);
@@ -19,11 +28,20 @@ export default function ThreeDLogoScroller({ logos }: Readonly<Props>) {
   const [isLoading, setIsLoading] = useState(true);
   const [webGLSupported, setWebGLSupported] = useState(true);
 
+  // Check if we have logos to display
+  const hasLogos = allLogos.length > 0;
+
   useEffect(() => {
     // Reset loading state
     setIsLoading(true);
     setLoadedLogos(0);
     setErrorLogos(0);
+
+    // Don't try to render if there are no logos
+    if (!hasLogos) {
+      setIsLoading(false);
+      return;
+    }
 
     // Set a timeout to prevent immediate rendering which can cause issues
     const loadingTimer = setTimeout(() => {
@@ -33,7 +51,7 @@ export default function ThreeDLogoScroller({ logos }: Readonly<Props>) {
     return () => {
       clearTimeout(loadingTimer);
     };
-  }, [logos]);
+  }, [allLogos, hasLogos]);
 
   // Check WebGL support
   useEffect(() => {
@@ -95,13 +113,13 @@ export default function ThreeDLogoScroller({ logos }: Readonly<Props>) {
     // Progress checker to update loading state
     const checkProgress = () => {
       totalProcessed++;
-      if (totalProcessed >= logos.length) {
+      if (totalProcessed >= allLogos.length) {
         setIsLoading(false);
       }
     };
 
-    logos.forEach((logo, index) => {
-      const angle = (index / logos.length) * Math.PI * 2;
+    allLogos.forEach((logo, index) => {
+      const angle = (index / allLogos.length) * Math.PI * 2;
       const geometry = new THREE.PlaneGeometry(1, 1);
 
       // Add a small timeout to stagger loading and prevent overwhelming the browser
@@ -249,41 +267,62 @@ export default function ThreeDLogoScroller({ logos }: Readonly<Props>) {
     };
   };
 
-  return (
-    <div
-      ref={containerRef}
-      className="w-full h-[400px] relative"
-      style={{ background: "transparent" }}
-    >
-      {isLoading ? (
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="animate-pulse text-center">
-            <div className="w-20 h-20 bg-gray-200 dark:bg-gray-700 rounded-full mx-auto mb-4"></div>
-            <p className="text-gray-500 dark:text-gray-400">
-              Loading 3D logos...
-            </p>
-          </div>
-        </div>
-      ) : (
-        <div className="absolute top-2 left-2 text-xs bg-black/50 text-white rounded px-2 py-1 z-10">
-          {loadedLogos} logos loaded, {errorLogos} failed
-        </div>
-      )}
+  // Add title based on the showTitle prop
+  const sceneTitle = showTitle ? (
+    <h2 className="text-2xl font-bold text-center mb-4">3D Brand Explorer</h2>
+  ) : null;
 
-      {/* Fallback message if WebGL not supported */}
-      {!webGLSupported && (
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="text-center p-4 bg-gray-100 dark:bg-gray-800 rounded-lg shadow-lg max-w-md">
-            <h3 className="text-lg font-semibold mb-2">
-              3D Visualization Not Available
-            </h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              Your browser does not support the required 3D features. Please try
-              a different browser or device.
-            </p>
-          </div>
+  if (!hasLogos) {
+    return (
+      <div className="py-4">
+        {sceneTitle}
+        <div className="w-full h-[400px] relative flex items-center justify-center">
+          <p className="text-gray-500">No brand logos available for 3D view</p>
         </div>
-      )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="py-4">
+      {sceneTitle}
+      <div
+        ref={containerRef}
+        className="w-full h-[400px] relative"
+        style={{ background: "transparent" }}
+      >
+        {isLoading ? (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="text-center">
+              <div className="w-20 h-20 mx-auto mb-4 flex items-center justify-center">
+                <LoadingSpinner />
+              </div>
+              <p className="text-gray-500 dark:text-gray-400">
+                Loading 3D brands...
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="absolute top-2 left-2 text-xs bg-black/50 text-white rounded px-2 py-1 z-10">
+            {loadedLogos} logos loaded, {errorLogos} failed
+          </div>
+        )}
+
+        {/* Fallback message if WebGL not supported */}
+        {!webGLSupported && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="text-center p-4 bg-gray-100 dark:bg-gray-800 rounded-lg shadow-lg max-w-md">
+              <h3 className="text-lg font-semibold mb-2">
+                3D Visualization Not Available
+              </h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Your browser does not support the required 3D features. Please
+                try a different browser or device.
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

@@ -1,36 +1,20 @@
 import { create } from 'zustand';
 
-// Add this interface to better define our brand mapping structure
-interface BrandMappings {
-  // Logo mappings (what appears in SVG filenames)
-  logoToDisplay: Record<string, string>;
-  // Filter mappings (what appears in database/URL params)
-  displayToDatabase: Record<string, string>;
-  // Reverse mappings (database to display names)
-  databaseToDisplay: Record<string, string>;
-}
-
-type LogoState = {
-  activeCategory: 'cars' | 'bikes';
+interface LogoStoreState {
+  activeCategory: string;
   carLogos: string[];
   bikeLogos: string[];
-  brandMappings: BrandMappings;
-  setActiveCategory: (category: 'cars' | 'bikes') => void;
+  allLogos: string[]; // Added all logos array
+  setActiveCategory: (category: string) => void;
   getBrandLogo: (brand: string) => string | undefined;
   getNormalizedBrandName: (brand: string) => string;
-  getFilterBrandName: (brand: string) => string;
-  getDatabaseBrandName: (brand: string) => string;
-};
+}
 
-export const useLogoStore = create<LogoState>((set, get) => ({
+export const useLogoStore = create<LogoStoreState>((set, get) => ({
   activeCategory: 'cars',
+  
+  // List all logos that should be shown in the carousel
   carLogos: [
-    '/brands/Audi.svg',
-    '/brands/Jaguar.svg',
-    '/brands/Force.svg',
-    '/brands/Mahindra.svg',
-    '/brands/Tata.svg',
-    '/brands/BMW.svg',
     '/brands/Mercedes.svg',
     '/brands/Lexus.svg',
     '/brands/Toyota.svg',
@@ -57,70 +41,49 @@ export const useLogoStore = create<LogoState>((set, get) => ({
     '/brands/Peugeot.svg',
     '/brands/RollsRoyce.svg',
     '/brands/Suzuki.svg',
-    '/brands/Vector.svg',
-    '/brands/McLaren.svg',
-    '/brands/Fiat.svg'
-  ],
-  bikeLogos: [
-    '/bike/Bajaj.svg',
-    '/bike/Benelli.svg',
-    '/bike/Ducati.svg',
-    '/bike/HarleyDavidson.svg',
-    '/bike/Honda.svg',
-    '/bike/Husqvarna.svg',
-    '/bike/Java.svg',
-    '/bike/Kawasaki.svg',
-    '/bike/KTM.svg',
-    '/bike/RoyalEnfield.svg',
-    '/bike/Suzuki.svg',
-    '/bike/TVS.svg',
-    '/bike/Yamaha.svg',
-    '/bike/Aprilia.svg',
-    '/bike/Ather.svg',
-    '/bike/Yezdi.svg',
-    '/bike/Hero.svg'
+    '/brands/Tata.svg',
   ],
   
-  // Comprehensive brand mappings
-  brandMappings: {
-    // Logo to display name mappings
-    logoToDisplay: {
-      'tata': 'Tata',
-      'tata motors': 'Tata',
-      'land rover': 'LandRover',
+  // Updated to include only logos that are likely to exist
+  bikeLogos: [
+    '/brands/BMW.svg',
+    '/brands/Honda.svg',
+    '/brands/Suzuki.svg'
+  ],
+  
+  // Combined array of all unique logos
+  get allLogos() {
+    const carSet = new Set(get().carLogos);
+    const combined = [...get().carLogos];
+    
+    // Add bike logos that aren't already in the car logos
+    get().bikeLogos.forEach(bikeLogo => {
+      if (!carSet.has(bikeLogo)) {
+        combined.push(bikeLogo);
+      }
+    });
+    
+    return combined;
+  },
+  
+  getNormalizedBrandName: (brand) => {
+    if (!brand) return '';
+    
+    // Handle special cases and normalize brand names
+    const normalizedMap: Record<string, string> = {
       'mercedes-benz': 'Mercedes',
-      'mercedes benz': 'Mercedes',
-      'mg motor': 'MG',
-      'royal enfield': 'RoyalEnfield',
-      'harley davidson': 'HarleyDavidson',
-      'rolls royce': 'RollsRoyce',
-      'aston martin': 'AstonMartin'
-    },
-    
-    // Display name to database name mappings
-    displayToDatabase: {
-      'tata': 'Tata Motors',
-      'land rover': 'Land Rover',
-      'mercedes': 'Mercedes-Benz',
-      'mercedes-benz': 'Mercedes-Benz', 
-      'mg': 'MG Motor',
-      'harley': 'Harley Davidson',
-      'royal enfield': 'Royal Enfield',
-      'rolls royce': 'Rolls Royce',
-      'aston martin': 'Aston Martin'
-    },
-    
-    // Database name to display name mappings (reverse of above)
-    databaseToDisplay: {
+      'mercedes': 'Mercedes',
       'tata motors': 'Tata',
       'land rover': 'Land Rover',
-      'mercedes-benz': 'Mercedes',
       'mg motor': 'MG',
       'harley davidson': 'Harley Davidson',
       'royal enfield': 'Royal Enfield',
       'rolls royce': 'Rolls Royce',
       'aston martin': 'Aston Martin'
     }
+    
+    const normalized = brand.toLowerCase().trim();
+    return normalizedMap[normalized] || normalized;
   },
   
   setActiveCategory: (category) => set({ activeCategory: category }),
@@ -130,43 +93,19 @@ export const useLogoStore = create<LogoState>((set, get) => ({
     const state = get();
     const normalizedBrand = state.getNormalizedBrandName(brand);
     
-    const brandLogo = state.activeCategory === 'cars' 
-      ? state.carLogos.find(logo => logo.toLowerCase().includes(normalizedBrand.toLowerCase()))
-      : state.bikeLogos.find(logo => logo.toLowerCase().includes(normalizedBrand.toLowerCase()));
-      
+    // First try category-specific logos
+    const categoryLogos = state.activeCategory === 'cars' ? state.carLogos : state.bikeLogos;
+    const brandLogo = categoryLogos.find(logo => 
+      logo.toLowerCase().includes(normalizedBrand.toLowerCase())
+    );
+    
+    // If not found in category, try all logos
+    if (!brandLogo) {
+      return state.allLogos.find(logo => 
+        logo.toLowerCase().includes(normalizedBrand.toLowerCase())
+      );
+    }
+    
     return brandLogo;
   },
-  
-  // Helper function to normalize brand names for logos - used by getBrandLogo
-  getNormalizedBrandName: (brand) => {
-    const state = get();
-    const lowercaseBrand = brand.toLowerCase();
-    return state.brandMappings.logoToDisplay[lowercaseBrand] || brand;
-  },
-  
-  // Helper function for filtering/search that maps URL parameter names to database names
-  getFilterBrandName: (brand) => {
-    const state = get();
-    const lowercaseBrand = brand.toLowerCase();
-    
-    // First, check direct mappings
-    if (state.brandMappings.displayToDatabase[lowercaseBrand]) {
-      return state.brandMappings.displayToDatabase[lowercaseBrand];
-    }
-    
-    // Special case for Tata → Tata Motors
-    if (lowercaseBrand === 'tata') {
-      return 'Tata Motors';
-    }
-    
-    // For other brands, return the original with proper capitalization
-    return brand;
-  },
-  
-  // Additional helper to convert database names back to display names
-  getDatabaseBrandName: (brand) => {
-    const state = get();
-    const lowercaseBrand = brand.toLowerCase();
-    return state.brandMappings.databaseToDisplay[lowercaseBrand] || brand;
-  }
 }));

@@ -6,9 +6,15 @@ import { useLogoStore } from '@/store/useLogoStore';
 export function mapUrlBrandToDatabase(brandParam: string | null): string | null {
   if (!brandParam) return null;
   
-  // Get mapping function from store
-  const { getFilterBrandName } = useLogoStore.getState();
-  return getFilterBrandName(brandParam);
+  try {
+    // Get mapping function from store
+    const { getFilterBrandName } = useLogoStore.getState();
+    return getFilterBrandName(brandParam);
+  } catch (error) {
+    console.error("Error in mapUrlBrandToDatabase:", error);
+    // Return original if function not available
+    return brandParam;
+  }
 }
 
 /**
@@ -17,6 +23,12 @@ export function mapUrlBrandToDatabase(brandParam: string | null): string | null 
 export function useInitialBrandFromUrl(brandParam: string | null): string {
   if (!brandParam) return "";
   
-  // Apply mapping
-  return useLogoStore.getState().getFilterBrandName(brandParam);
+  try {
+    // Apply mapping
+    return useLogoStore.getState().getFilterBrandName(brandParam);
+  } catch (error) {
+    console.error("Error in useInitialBrandFromUrl:", error);
+    // Return original if function not available
+    return brandParam;
+  }
 }
