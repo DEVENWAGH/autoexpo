@@ -1,19 +1,30 @@
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from "next/server";
+import { getToken } from "next-auth/jwt";
 
 export async function middleware(request: NextRequest) {
   const url = request.nextUrl.clone();
 
-  // Check if path starts with /admin
-  if (request.nextUrl.pathname.startsWith('/admin')) {
-    return NextResponse.redirect(new URL('/unauthorized', request.url));
-  }
-  
-  // Check if path starts with /brands
-  if (request.nextUrl.pathname.startsWith('/brands')) {
+  // Check if path starts with /admin or /brands
+  if (request.nextUrl.pathname.startsWith('/admin') || 
+      request.nextUrl.pathname.startsWith('/brands')) {
+    
+    // Allow access to brand SVG files without authentication
     if (request.nextUrl.pathname.match(/\/brands\/[^\/]+\.svg$/)) {
       return NextResponse.next();
     }
+    
+    // Get the token and check user's role
+    const token = await getToken({ 
+      req: request, 
+      secret: process.env.NEXTAUTH_SECRET 
+    });
+    
+    // Allow access if user is admin or has Brands role
+    if (token && (token.role === 'admin' || token.role === 'Brands')) {
+      return NextResponse.next();
+    }
+    
+    // If no token or insufficient permissions, redirect to unauthorized
     return NextResponse.redirect(new URL('/unauthorized', request.url));
   }
 
@@ -40,6 +51,11 @@ export async function middleware(request: NextRequest) {
   return NextResponse.next();
 }
 
+// Match only these paths
 export const config = {
-  matcher: ['/admin/:path*', '/brands/:path*', '/vehicle/:id*'],
+  matcher: [
+    '/admin/:path*', 
+    '/brands/:path*',
+    '/vehicle/:path*'
+  ]
 };
