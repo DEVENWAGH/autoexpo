@@ -140,7 +140,6 @@ export default function LogoCarousel({ logos }: Props) {
         aria-label={`Brand logo ${index + 1}`}
         onClick={() => handleLogoClick(logo)}
       >
-        <HydrationFix>
           <div
             className={`w-48 h-48 flex items-center justify-center ${logoBackgroundColor} rounded-lg shadow-lg mx-4`}
           >
@@ -154,7 +153,6 @@ export default function LogoCarousel({ logos }: Props) {
               draggable={false}
             />
           </div>
-        </HydrationFix>
       </button>
     );
   };

@@ -10,14 +10,14 @@ type LogoState = {
 export const useLogoStore = create<LogoState>((set) => ({
   activeCategory: 'cars',
   carLogos: [
-    '/brands/audi.svg',
-  '/brands/tata.svg',
+  '/brands/audi.svg',
   '/brands/jaguar.svg',
   '/brands/force.svg',
   '/brands/mahindra.svg',
-  '/brands/lexus.svg',
+  '/brands/tata.svg',
   '/brands/bmw.svg',
   '/brands/mercedes.svg',
+  '/brands/lexus.svg',
   '/brands/toyota.svg',
   '/brands/honda.svg',
   '/brands/volkswagen.svg',
