@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react"; // Import Suspense
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import Card from "@/components/card/Card";
@@ -16,10 +16,39 @@ import {
 } from "@/components/ui/accordion";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
-import { cn } from "@/lib/utils";
 
+// Define a loading component for the Suspense fallback
+function LoadingFallback() {
+  return (
+    <div className="container mx-auto p-4 max-w-[1440px]">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">Car Finder</h1>
+      </div>
+      <div className="flex gap-6">
+        <div className="w-64 shrink-0">
+          <Skeleton className="h-[500px] w-full" />
+        </div>
+        <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <Skeleton key={i} className="h-[300px]" />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Main component wrapped in Suspense
 export default function CarsPage() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <CarsPageContent />
+    </Suspense>
+  );
+}
+
+// Component containing the logic that uses useSearchParams
+function CarsPageContent() {
   const searchParams = useSearchParams();
   const { isBookmarked, addBookmark, removeBookmark } = useBookmarkStore();
   const { theme, resolvedTheme } = useTheme();
@@ -139,23 +168,7 @@ export default function CarsPage() {
 
   // Loading states
   if (isLoading) {
-    return (
-      <div className="container mx-auto p-4 max-w-[1440px]">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold">Car Finder</h1>
-        </div>
-        <div className="flex gap-6">
-          <div className="w-64 shrink-0">
-            <Skeleton className="h-[500px] w-full" />
-          </div>
-          <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[1, 2, 3, 4, 5, 6].map((i) => (
-              <Skeleton key={i} className="h-[300px]" />
-            ))}
-          </div>
-        </div>
-      </div>
-    );
+    return <LoadingFallback />;
   }
 
   // Error state

@@ -13,6 +13,10 @@ if (!cached) {
 }
 
 export async function dbConnect() {
+  if (typeof window !== 'undefined') {
+    throw new Error('dbConnect should only be used on the server side');
+  }
+
   if (cached.conn) {
     return cached.conn;
   }
@@ -26,7 +30,7 @@ export async function dbConnect() {
       return mongoose;
     });
   }
-  
+
   cached.conn = await cached.promise;
   return cached.conn;
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
@@ -18,6 +19,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 
 export default function BikesPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <BikesPageContent />
+    </Suspense>
+  );
+}
+
+function BikesPageContent() {
   const searchParams = useSearchParams();
   const { isBookmarked, addBookmark, removeBookmark } = useBookmarkStore();
   const { theme, resolvedTheme } = useTheme();
@@ -336,9 +345,7 @@ export default function BikesPage() {
 
               {/* Bike Type Filter */}
               <AccordionItem value="type" className="border-b">
-                <AccordionTrigger className="py-3">
-                  Bike Type
-                </AccordionTrigger>
+                <AccordionTrigger className="py-3">Bike Type</AccordionTrigger>
                 <AccordionContent>
                   <div className="space-y-2">
                     {bikeTypes.map(({ type, count }) => (
@@ -370,7 +377,9 @@ export default function BikesPage() {
 
               {/* Engine Type Filter */}
               <AccordionItem value="engine" className="border-b-0">
-                <AccordionTrigger className="py-3">Engine Type</AccordionTrigger>
+                <AccordionTrigger className="py-3">
+                  Engine Type
+                </AccordionTrigger>
                 <AccordionContent>
                   <div className="space-y-2">
                     {["Petrol", "Electric"].map((engine) => (
@@ -492,10 +501,7 @@ export default function BikesPage() {
             ) : (
               <div className="col-span-full py-10 text-center">
                 <div className="mx-auto w-24 h-24 mb-4 flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800">
-                  <Bike
-                    size={40}
-                    className="opacity-60"
-                  />
+                  <Bike size={40} className="opacity-60" />
                 </div>
                 <h3 className="text-lg font-medium mb-2">No bikes found</h3>
                 <p className="text-sm text-gray-500 dark:text-gray-400">

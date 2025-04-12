@@ -21,6 +21,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       },
 
       authorize: async (credentials) => {
+        if (typeof window !== "undefined") {
+          throw new Error("Authorization logic should only run on the server side");
+        }
+
         const email = credentials.email as string | undefined;
         const password = credentials.password as string | undefined;
 
@@ -50,7 +54,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           id: user._id.toString(),
           email: user.email,
           name: `${user.firstName} ${user.lastName}`,
-          role: user.role // Ensure role is included
+          role: user.role, // Ensure role is included
         };
       },
     }),
