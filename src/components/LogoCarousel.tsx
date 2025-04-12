@@ -38,15 +38,23 @@ export default function LogoCarousel({ logos }: Props) {
   const router = useRouter();
   const activeCategory = useLogoStore((state) => state.activeCategory);
   const [failedImages, setFailedImages] = useState<Record<string, boolean>>({});
+  const [isLoading, setIsLoading] = useState(true); // Add loading state
 
   // Ensure component is mounted to avoid hydration issues
   useEffect(() => {
     setMounted(true);
+    // Set loading false after a delay to ensure proper rendering
+    const timer = setTimeout(() => setIsLoading(false), 800);
+    return () => clearTimeout(timer);
   }, []);
 
   // Reset failed images when logos change
   useEffect(() => {
     setFailedImages({});
+    setIsLoading(true);
+    // Reset loading state when logos change
+    const timer = setTimeout(() => setIsLoading(false), 800);
+    return () => clearTimeout(timer);
   }, [logos]);
 
   // Add theme-aware styling
@@ -111,12 +119,13 @@ export default function LogoCarousel({ logos }: Props) {
 
   // Add auto-scroll animation
   useEffect(() => {
+    if (isLoading) return; // Don't auto-scroll during loading
     const interval = setInterval(() => {
       setActiveIndex((prev) => (prev + 1) % logos.length);
     }, 3000); // Change slide every 3 seconds
 
     return () => clearInterval(interval);
-  }, [logos.length]);
+  }, [logos.length, isLoading]);
 
   // Handle logo click to navigate to filter page
   const handleLogoClick = (logo: string) => {
@@ -138,7 +147,27 @@ export default function LogoCarousel({ logos }: Props) {
   // Render logos inside our HydrationFix component to prevent hydration warnings
   const renderLogoButton = (logo: string, index: number) => {
     if (failedImages[logo]) {
-      return null; // Skip rendering failed images
+      // Create a placeholder when image fails to load
+      return (
+        <button
+          key={`${logo}-${index}`}
+          className="absolute transition-all duration-500 ease-out"
+          style={{
+            transform: `translateX(-50%) scale(${getScale(index % logos.length)})`,
+            left: `${50 + (index - activeIndex) * 12.5}%`,
+            opacity: getOpacity(index % logos.length),
+            zIndex: 1000 - Math.abs((index % logos.length) - activeIndex),
+          }}
+        >
+          <div
+            className={`w-48 h-48 flex items-center justify-center ${logoBackgroundColor} rounded-lg shadow-lg mx-4`}
+          >
+            <div className="text-gray-400 text-sm">
+              {getBrandNameFromLogo(logo) || "Brand"}
+            </div>
+          </div>
+        </button>
+      );
     }
 
     return (
@@ -146,9 +175,7 @@ export default function LogoCarousel({ logos }: Props) {
         key={`${logo}-${index}`}
         className="absolute transition-all duration-500 ease-out"
         style={{
-          transform: `translateX(-50%) scale(${getScale(
-            index % logos.length
-          )})`,
+          transform: `translateX(-50%) scale(${getScale(index % logos.length)})`,
           left: `${50 + (index - activeIndex) * 12.5}%`,
           opacity: getOpacity(index % logos.length),
           zIndex: 1000 - Math.abs((index % logos.length) - activeIndex),
@@ -167,11 +194,8 @@ export default function LogoCarousel({ logos }: Props) {
             className="object-contain p-3"
             draggable={false}
             onError={() => handleImageError(logo)}
-            priority={
-              index === activeIndex ||
-              index === (activeIndex + 1) % logos.length ||
-              index === (activeIndex - 1 + logos.length) % logos.length
-            }
+            priority={true}
+            unoptimized={true}
           />
         </div>
       </button>
@@ -199,12 +223,19 @@ export default function LogoCarousel({ logos }: Props) {
       }}
     >
       <div className="flex items-center justify-center relative h-full">
-        <HydrationFix>
-          {logos.length > 0 &&
-            [...logos, ...logos].map((logo, index) =>
-              renderLogoButton(logo, index)
-            )}
-        </HydrationFix>
+        {isLoading ? (
+          <div className="animate-pulse text-center">
+            <div className="w-48 h-48 bg-gray-200 dark:bg-gray-700 rounded-lg mx-auto mb-4"></div>
+            <p className="text-gray-500 dark:text-gray-400">Loading logos...</p>
+          </div>
+        ) : (
+          <HydrationFix>
+            {logos.length > 0 &&
+              [...logos, ...logos].map((logo, index) =>
+                renderLogoButton(logo, index)
+              )}
+          </HydrationFix>
+        )}
       </div>
     </section>
   );
