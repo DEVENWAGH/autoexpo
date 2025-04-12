@@ -1,55 +1,36 @@
 /**
- * Maps the filename from logo SVG to actual brand name
+ * Extracts brand name from logo path
  */
-export const getBrandNameFromLogo = (logoPath: string): string => {
-  if (!logoPath.includes('/')) {
-    return '';
-  }
+export function getBrandNameFromLogo(logoPath: string): string | null {
+  if (!logoPath) return null;
   
-  // Extract filename from path
-  const parts = logoPath.split('/');
-  const filename = parts[parts.length - 1];
-  let brandName = filename.replace('.svg', '');
+  // Remove path and extension
+  const filename = logoPath.split('/').pop()?.split('.')[0] || '';
   
-  // First letter uppercase, rest lowercase
-  brandName = brandName.charAt(0).toUpperCase() + brandName.slice(1).toLowerCase();
-  
-  // Special case mappings for car brands
-  const carBrandMappings: Record<string, string> = {
-    'Tata': 'Tata Motors',
-    'Mg': 'MG Motor',
-    'Landrover': 'Land Rover',
-    'Astonmartin': 'Aston Martin',
-    'Rollsroyce': 'Rolls Royce',
-    'Mercedesbenz': 'Mercedes-Benz',
-    'Bmw': 'BMW',
-    'Byd': 'BYD',
-    'Kia': 'Kia',
-    'Tvs': 'TVS',
-    'Mgmotor': 'MG Motor',
-    'Mini': 'MINI'
+  // Special case mappings (for paths that don't match brand names exactly)
+  const specialCases: Record<string, string> = {
+    'astonmartin': 'Aston Martin',
+    'harleyDavidson': 'Harley Davidson',
+    'landrover': 'Land Rover',
+    'rollsroyce': 'Rolls Royce',
+    'royalEnfield': 'Royal Enfield',
+    'java': 'Jawa', // Correcting if there's a typo in the file name
+    'mg': 'MG',
+    'bmw': 'BMW',
+    'tvs': 'TVS',
+    'ktm': 'KTM',
   };
   
-  // Special case mappings for bike brands
-  const bikeBrandMappings: Record<string, string> = {
-    'Harleydavidson': 'Harley Davidson',
-    'RoyalEnfield': 'Royal Enfield',
-    'Ktm': 'KTM',
-    'Bmw': 'BMW',
-    'Tvs': 'TVS',
-    'Hero': 'Hero MotoCorp',
-    'Java': 'Jawa'
-  };
-  
-  // Check if this is a car or bike brand path
-  const isBikePath = logoPath.toLowerCase().includes('bike/');
-  
-  // Apply the appropriate mapping
-  if (isBikePath && bikeBrandMappings[brandName]) {
-    return bikeBrandMappings[brandName];
-  } else if (!isBikePath && carBrandMappings[brandName]) {
-    return carBrandMappings[brandName];
+  // Check if it's a special case
+  if (specialCases[filename]) {
+    return specialCases[filename];
   }
   
-  return brandName;
-};
+  // Otherwise capitalize first letter of each word
+  return filename
+    .replace(/([A-Z])/g, ' $1') // Add space before capital letters
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ')
+    .trim();
+}

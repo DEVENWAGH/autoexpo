@@ -37,11 +37,17 @@ export default function LogoCarousel({ logos }: Props) {
   const [mounted, setMounted] = useState(false);
   const router = useRouter();
   const activeCategory = useLogoStore((state) => state.activeCategory);
+  const [failedImages, setFailedImages] = useState<Record<string, boolean>>({});
 
   // Ensure component is mounted to avoid hydration issues
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Reset failed images when logos change
+  useEffect(() => {
+    setFailedImages({});
+  }, [logos]);
 
   // Add theme-aware styling
   const logoBackgroundColor =
@@ -123,8 +129,18 @@ export default function LogoCarousel({ logos }: Props) {
     }
   };
 
+  // Handle image error
+  const handleImageError = (logo: string) => {
+    console.error(`Failed to load logo image: ${logo}`);
+    setFailedImages((prev) => ({ ...prev, [logo]: true }));
+  };
+
   // Render logos inside our HydrationFix component to prevent hydration warnings
   const renderLogoButton = (logo: string, index: number) => {
+    if (failedImages[logo]) {
+      return null; // Skip rendering failed images
+    }
+
     return (
       <button
         key={`${logo}-${index}`}
@@ -140,19 +156,24 @@ export default function LogoCarousel({ logos }: Props) {
         aria-label={`Brand logo ${index + 1}`}
         onClick={() => handleLogoClick(logo)}
       >
-          <div
-            className={`w-48 h-48 flex items-center justify-center ${logoBackgroundColor} rounded-lg shadow-lg mx-4`}
-          >
-            <Image
-              // Use the path directly, no modification needed as they should come correct from the store
-              src={logo}
-              alt={`Brand logo ${index + 1}`}
-              width={logo.includes("kawasaki") ? 150 : 120}
-              height={logo.includes("kawasaki") ? 150 : 120}
-              className="object-contain p-3"
-              draggable={false}
-            />
-          </div>
+        <div
+          className={`w-48 h-48 flex items-center justify-center ${logoBackgroundColor} rounded-lg shadow-lg mx-4`}
+        >
+          <Image
+            src={logo}
+            alt={`Brand logo ${index + 1}`}
+            width={logo.includes("kawasaki") ? 150 : 120}
+            height={logo.includes("kawasaki") ? 150 : 120}
+            className="object-contain p-3"
+            draggable={false}
+            onError={() => handleImageError(logo)}
+            priority={
+              index === activeIndex ||
+              index === (activeIndex + 1) % logos.length ||
+              index === (activeIndex - 1 + logos.length) % logos.length
+            }
+          />
+        </div>
       </button>
     );
   };
@@ -178,9 +199,12 @@ export default function LogoCarousel({ logos }: Props) {
       }}
     >
       <div className="flex items-center justify-center relative h-full">
-        {[...logos, ...logos].map((logo, index) =>
-          renderLogoButton(logo, index)
-        )}
+        <HydrationFix>
+          {logos.length > 0 &&
+            [...logos, ...logos].map((logo, index) =>
+              renderLogoButton(logo, index)
+            )}
+        </HydrationFix>
       </div>
     </section>
   );

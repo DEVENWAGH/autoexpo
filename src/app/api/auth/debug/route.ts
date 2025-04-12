@@ -1,26 +1,16 @@
-import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { auth } from '@/auth';
+import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "../[...nextauth]/options";
 
 export async function GET() {
   try {
-    const session = await getServerSession(auth);
+    const session = await getServerSession(authOptions);
     
-    // Don't return sensitive data, but show enough to debug auth issues
-    return NextResponse.json({
+    return NextResponse.json({ 
       authenticated: !!session,
-      user: session?.user ? {
-        name: session.user.name,
-        email: session.user.email,
-        role: session.user.role,
-        // Don't include sensitive fields like id
-      } : null,
-      timestamp: new Date().toISOString(),
-    }, { status: 200 });
+      user: session?.user || null
+    });
   } catch (error) {
-    return NextResponse.json({
-      error: 'Failed to get session information',
-      message: error instanceof Error ? error.message : 'Unknown error',
-    }, { status: 500 });
+    return NextResponse.json({ error: "Failed to get session" }, { status: 500 });
   }
 }
