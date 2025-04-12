@@ -3,6 +3,9 @@
 import { useState, useRef, useEffect } from "react";
 import Image from "next/image";
 import { useTheme } from "next-themes";
+import { useRouter } from "next/navigation";
+import { useLogoStore } from "@/store/useLogoStore";
+import { getBrandNameFromLogo } from "@/utils/brandNameMapping";
 
 interface Props {
   readonly logos: readonly string[];
@@ -16,6 +19,8 @@ export default function LogoCarousel({ logos }: Props) {
   const [startX, setStartX] = useState(0);
   const { theme, resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
+  const router = useRouter();
+  const activeCategory = useLogoStore((state) => state.activeCategory);
 
   // Ensure component is mounted to avoid hydration issues
   useEffect(() => {
@@ -91,6 +96,17 @@ export default function LogoCarousel({ logos }: Props) {
     return () => clearInterval(interval);
   }, [logos.length]);
 
+  // Handle logo click to navigate to filter page
+  const handleLogoClick = (logo: string) => {
+    const brandName = getBrandNameFromLogo(logo);
+    
+    if (brandName) {
+      // Navigate to cars or bikes page with brand filter
+      const path = activeCategory === "cars" ? "/cars" : "/bikes";
+      router.push(`${path}?brand=${encodeURIComponent(brandName)}`);
+    }
+  };
+
   return (
     <section
       ref={containerRef}
@@ -125,7 +141,7 @@ export default function LogoCarousel({ logos }: Props) {
               zIndex: 1000 - Math.abs((index % logos.length) - activeIndex),
             }}
             aria-label={`Brand logo ${index + 1}`}
-            onClick={() => setActiveIndex(index % logos.length)}
+            onClick={() => handleLogoClick(logo)}
           >
             <div
               className={`w-48 h-48 flex items-center justify-center ${logoBackgroundColor} rounded-lg shadow-lg mx-4`}

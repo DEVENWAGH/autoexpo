@@ -14,6 +14,7 @@ import {
 import localFont from "next/font/local";
 import { useLogoStore } from "@/store/useLogoStore";
 import { useTheme } from "next-themes";
+import { useRouter } from "next/navigation";
 
 const brunoFont = Bruno_Ace({
   subsets: ["latin"],
@@ -28,6 +29,11 @@ const Monument_Extended = localFont({
   weight: "400",
 });
 
+interface Brand {
+  name: string;
+  models?: string[];
+}
+
 export default function Hero() {
   const [activeTab, setActiveTab] = useState("cars");
   const [selectedFilter, setSelectedFilter] = useState<"brands" | "budget">(
@@ -37,14 +43,75 @@ export default function Hero() {
   const [selectedVehicleType, setSelectedVehicleType] = useState("");
   const [selectedBrand, setSelectedBrand] = useState("");
   const [selectedModel, setSelectedModel] = useState("");
+  const [carBrands, setCarBrands] = useState<Brand[]>([]);
+  const [bikeBrands, setBikeBrands] = useState<Brand[]>([]);
+  const [availableModels, setAvailableModels] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   const setActiveCategory = useLogoStore((state) => state.setActiveCategory);
   const { theme, resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
+  const router = useRouter();
 
   // Ensure component is mounted to avoid hydration issues
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Fetch brands from database
+  useEffect(() => {
+    async function fetchBrands() {
+      setIsLoading(true);
+      try {
+        // Fetch car brands
+        const carsResponse = await fetch("/api/brands?type=cars");
+        if (carsResponse.ok) {
+          const carData = await carsResponse.json();
+          setCarBrands(carData.brands || []);
+        }
+
+        // Fetch bike brands
+        const bikesResponse = await fetch("/api/brands?type=bikes");
+        if (bikesResponse.ok) {
+          const bikeData = await bikesResponse.json();
+          setBikeBrands(bikeData.brands || []);
+        }
+      } catch (error) {
+        console.error("Failed to fetch brands:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    fetchBrands();
+  }, []);
+
+  // Fetch models when brand changes
+  useEffect(() => {
+    if (!selectedBrand) {
+      setAvailableModels([]);
+      return;
+    }
+
+    async function fetchModels() {
+      try {
+        const vehicleType = activeTab === "cars" ? "cars" : "bikes";
+        const response = await fetch(
+          `/api/models?brand=${encodeURIComponent(
+            selectedBrand
+          )}&type=${vehicleType}`
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          setAvailableModels(data.models || []);
+        }
+      } catch (error) {
+        console.error("Failed to fetch models:", error);
+      }
+    }
+
+    fetchModels();
+  }, [selectedBrand, activeTab]);
 
   const carBudgetRanges = [
     "Under ₹5 Lakh",
@@ -79,29 +146,6 @@ export default function Hero() {
     "Scooter",
   ];
 
-  const carBrands = ["Audi", "BMW", "Mercedes", "Tesla"];
-  const bikeBrands = ["Harley-Davidson", "Ducati", "Yamaha", "Kawasaki"];
-
-  const carModels: Record<string, string[]> = {
-    Audi: ["A4", "A6", "Q7"],
-    BMW: ["X1", "X3", "X5"],
-    Mercedes: ["C-Class", "E-Class", "S-Class"],
-    Tesla: ["Model S", "Model 3", "Model X"],
-  };
-
-  const bikeModels: Record<string, string[]> = {
-    "Harley-Davidson": ["Street 750", "Iron 883", "Forty-Eight"],
-    Ducati: ["Panigale V4", "Monster 821", "Scrambler"],
-    Yamaha: ["YZF-R1", "MT-09", "FZ-07"],
-    Kawasaki: ["Ninja 300", "Z650", "Versys 650"],
-  };
-
-  const brands = activeTab === "cars" ? carBrands : bikeBrands;
-  const models =
-    activeTab === "cars"
-      ? carModels[selectedBrand] || []
-      : bikeModels[selectedBrand] || [];
-
   // Reset selections when tab changes
   const handleTabChange = (value: string) => {
     setActiveTab(value);
@@ -111,6 +155,23 @@ export default function Hero() {
     setSelectedModel("");
     setSelectedBudget("");
     setSelectedVehicleType("");
+  };
+
+  const handleSearch = () => {
+    // Construct URL with selected filters
+    const params = new URLSearchParams();
+
+    if (selectedFilter === "brands") {
+      if (selectedBrand) params.append("brand", selectedBrand);
+      if (selectedModel) params.append("model", selectedModel);
+    } else {
+      if (selectedBudget) params.append("budget", selectedBudget);
+      if (selectedVehicleType) params.append("type", selectedVehicleType);
+    }
+
+    // Navigate to the appropriate page based on the active tab
+    const basePath = activeTab === "cars" ? "/cars" : "/bikes";
+    router.push(`${basePath}?${params.toString()}`);
   };
 
   // Determine appropriate colors based on theme - maintain purple
@@ -128,6 +189,9 @@ export default function Hero() {
     mounted && (theme === "dark" || resolvedTheme === "dark")
       ? "text-[#E9D5FF]" // Light purple text for dark mode
       : "text-[#4F378A]"; // Dark purple text for light mode
+
+  // Get the brands based on active tab
+  const brands = activeTab === "cars" ? carBrands : bikeBrands;
 
   return (
     <section
@@ -196,6 +260,7 @@ export default function Hero() {
 
           {/* Search Button */}
           <button
+            onClick={handleSearch}
             className={`mb-8 w-full rounded-full bg-gradient-to-r from-[#7129a1] to-[#9747FF] py-4 text-lg text-white shadow-lg transition-all hover:shadow-xl active:scale-95 ${Monument_Extended.className}`}
           >
             Search
@@ -264,16 +329,20 @@ export default function Hero() {
               <div className="space-y-2 rounded-t-lg bg-[#E5D8F6] p-4">
                 <Select value={selectedBrand} onValueChange={setSelectedBrand}>
                   <SelectTrigger className="w-full text-xl bg-[#E5D8F6] text-black border-[#7129a1]">
-                    <SelectValue placeholder="Select Brand" />
+                    <SelectValue
+                      placeholder={
+                        isLoading ? "Loading brands..." : "Select Brand"
+                      }
+                    />
                   </SelectTrigger>
-                  <SelectContent className="bg-[#E5D8F6] text-black">
+                  <SelectContent className="bg-[#E5D8F6] text-black max-h-[300px] overflow-y-auto">
                     {brands.map((brand) => (
                       <SelectItem
-                        key={brand}
-                        value={brand}
+                        key={brand.name}
+                        value={brand.name}
                         className="hover:bg-[#7129a1] focus:bg-[#7129a1]"
                       >
-                        {brand}
+                        {brand.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -282,12 +351,24 @@ export default function Hero() {
 
               {/* Model Select */}
               <div className="space-y-2 rounded-b-lg bg-[#E5D8F6] p-4">
-                <Select value={selectedModel} onValueChange={setSelectedModel}>
+                <Select
+                  value={selectedModel}
+                  onValueChange={setSelectedModel}
+                  disabled={!selectedBrand || availableModels.length === 0}
+                >
                   <SelectTrigger className="w-full text-xl bg-[#E5D8F6] text-black border-[#7129a1]">
-                    <SelectValue placeholder="Select Model" />
+                    <SelectValue
+                      placeholder={
+                        !selectedBrand
+                          ? "Select brand first"
+                          : availableModels.length === 0
+                          ? "Loading models..."
+                          : "Select Model"
+                      }
+                    />
                   </SelectTrigger>
-                  <SelectContent className="bg-[#E5D8F6] text-black">
-                    {models.map((model) => (
+                  <SelectContent className="bg-[#E5D8F6] text-black max-h-[300px] overflow-y-auto">
+                    {availableModels.map((model) => (
                       <SelectItem
                         key={model}
                         value={model}

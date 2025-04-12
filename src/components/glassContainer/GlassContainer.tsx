@@ -6,6 +6,7 @@ import { useTheme } from "next-themes";
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useBookmarkStore, BookmarkedVehicle } from "@/store/useBookmarkStore";
+import { useCarDataStore } from "@/store/carDataStore";
 
 const brunoFont = Bruno_Ace({
   subsets: ["latin"],
@@ -60,12 +61,18 @@ interface GroupedCar {
 }
 
 export default function GlassContainer() {
-  const { theme, resolvedTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
   const [cars, setCars] = useState<GroupedCar[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
-  const { addBookmark, removeBookmark, isBookmarked } = useBookmarkStore();
+  const { theme, resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  const { isBookmarked, addBookmark, removeBookmark } = useBookmarkStore();
+  const {
+    fetchCars,
+    cars: storeCars,
+    isLoading: storeLoading,
+    error: storeError,
+  } = useCarDataStore();
 
   // Prevent hydration mismatch
   useEffect(() => {
@@ -92,130 +99,113 @@ export default function GlassContainer() {
     basePrice: number,
     topPrice: number
   ) => {
-    // If we have both base and top prices, always show the variant range
     if (basePrice > 0 && topPrice > 0 && basePrice !== topPrice) {
       return `${formatPrice(basePrice)} - ${formatPrice(topPrice)}`;
-    }
-    // Fall back to min-max range if specific variants not available
-    else if (maxPrice > minPrice) {
+    } else if (maxPrice > minPrice) {
       return `${formatPrice(minPrice)} - ${formatPrice(maxPrice)}`;
     }
-    // Default to single price
     return formatPrice(minPrice);
   };
 
-  // Fetch cars from the database
+  // Process cars from store into grouped format
   useEffect(() => {
-    const fetchCars = async () => {
+    if (!storeCars.length) {
+      fetchCars();
+      return;
+    }
+
+    setIsLoading(storeLoading);
+    setError(storeError || "");
+
+    const processStoreCars = () => {
       try {
-        setIsLoading(true);
+        const carGroups: Record<
+          string,
+          {
+            baseModel?: Car;
+            minPrice: number;
+            maxPrice: number;
+            basePrice: number;
+            topPrice: number;
+            hasBaseVariant: boolean;
+            hasTopVariant: boolean;
+          }
+        > = {};
 
-        // Using the same endpoint that works in the dashboard
-        const response = await fetch("/api/vehicles/my-vehicles");
+        // Group cars and find min/max prices
+        storeCars.forEach((car) => {
+          const modelKey = `${car.basicInfo.brand}-${car.basicInfo.name}`;
+          const price = car.basicInfo.priceExshowroom;
+          const variant = car.basicInfo.variant?.toLowerCase() || "";
 
-        if (!response.ok) {
-          throw new Error("Failed to fetch cars");
-        }
+          if (!carGroups[modelKey]) {
+            carGroups[modelKey] = {
+              minPrice: price,
+              maxPrice: price,
+              basePrice: variant === "base" ? price : 0,
+              topPrice: variant === "top" ? price : 0,
+              hasBaseVariant: variant === "base",
+              hasTopVariant: variant === "top",
+            };
+          } else {
+            carGroups[modelKey].minPrice = Math.min(
+              carGroups[modelKey].minPrice,
+              price
+            );
+            carGroups[modelKey].maxPrice = Math.max(
+              carGroups[modelKey].maxPrice,
+              price
+            );
 
-        const data = await response.json();
-
-        if (data.cars && Array.isArray(data.cars)) {
-          // Group cars by model and track price ranges
-          const modelGroups: Record<
-            string,
-            {
-              baseModel?: Car;
-              minPrice: number;
-              maxPrice: number;
-              basePrice: number;
-              topPrice: number;
-              hasBaseVariant: boolean;
-              hasTopVariant: boolean;
+            if (variant === "base") {
+              carGroups[modelKey].basePrice = price;
+              carGroups[modelKey].hasBaseVariant = true;
             }
-          > = {};
-
-          // First pass: group cars and find min/max prices for each model
-          data.cars.forEach((car: Car) => {
-            const modelKey = `${car.basicInfo.brand}-${car.basicInfo.name}`;
-            const price = car.basicInfo.priceExshowroom;
-            const variant = car.basicInfo.variant?.toLowerCase() || "";
-
-            if (!modelGroups[modelKey]) {
-              modelGroups[modelKey] = {
-                minPrice: price,
-                maxPrice: price,
-                basePrice: variant === "base" ? price : 0,
-                topPrice: variant === "top" ? price : 0,
-                hasBaseVariant: variant === "base",
-                hasTopVariant: variant === "top",
-              };
-            } else {
-              // Update min/max prices
-              if (price < modelGroups[modelKey].minPrice) {
-                modelGroups[modelKey].minPrice = price;
-              }
-              if (price > modelGroups[modelKey].maxPrice) {
-                modelGroups[modelKey].maxPrice = price;
-              }
-
-              // Track specific variant prices
-              if (variant === "base") {
-                modelGroups[modelKey].basePrice = price;
-                modelGroups[modelKey].hasBaseVariant = true;
-              } else if (variant === "top") {
-                modelGroups[modelKey].topPrice = price;
-                modelGroups[modelKey].hasTopVariant = true;
-              }
+            if (variant === "top") {
+              carGroups[modelKey].topPrice = price;
+              carGroups[modelKey].hasTopVariant = true;
             }
+          }
 
-            // If this is a base model variant, save it as reference
-            if (variant === "base" || !modelGroups[modelKey].baseModel) {
-              modelGroups[modelKey].baseModel = car;
-            }
-          });
+          if (variant === "base" || !carGroups[modelKey].baseModel) {
+            carGroups[modelKey].baseModel = car;
+          }
+        });
 
-          // Second pass: create the final cars array with proper price ranges
-          const baseModelCars: GroupedCar[] = [];
+        const baseModelCars: GroupedCar[] = [];
 
-          Object.entries(modelGroups).forEach(([modelKey, group]) => {
-            // Only proceed if we have a reference model for this car
-            if (group.baseModel) {
-              const car = group.baseModel;
-              baseModelCars.push({
-                _id: car._id,
-                basicInfo: {
-                  brand: car.basicInfo.brand,
-                  name: car.basicInfo.name,
-                  priceExshowroom: car.basicInfo.priceExshowroom,
-                  carType: car.basicInfo.carType,
-                },
-                minPrice: group.minPrice,
-                maxPrice: group.maxPrice,
-                basePrice: group.basePrice,
-                topPrice: group.topPrice,
-                images: car.images,
-                fuelPerformance: car.fuelPerformance,
-              });
-            }
-          });
+        Object.entries(carGroups).forEach(([modelKey, group]) => {
+          if (group.baseModel) {
+            const car = group.baseModel;
+            baseModelCars.push({
+              _id: car._id,
+              basicInfo: {
+                brand: car.basicInfo.brand,
+                name: car.basicInfo.name,
+                priceExshowroom: car.basicInfo.priceExshowroom,
+                carType: car.basicInfo.carType,
+              },
+              minPrice: group.minPrice,
+              maxPrice: group.maxPrice,
+              basePrice: group.basePrice,
+              topPrice: group.topPrice,
+              images: car.images,
+              fuelPerformance: car.fuelPerformance,
+            });
+          }
+        });
 
-          // Limit to 4 cars instead of 3
-          setCars(baseModelCars.slice(0, 4));
-        } else {
-          setCars([]);
-        }
-
-        setError("");
+        setCars(baseModelCars.slice(0, 4));
       } catch (err) {
-        console.error("Error fetching cars:", err);
-        setError("Failed to load cars. Please try again later.");
+        console.error("Error processing cars:", err);
+        setError("Failed to process car data.");
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchCars();
-  }, []);
+    processStoreCars();
+  }, [storeCars, storeLoading, storeError, fetchCars]);
 
   // Theme-aware styles
   const titleTextClass =
@@ -242,7 +232,6 @@ export default function GlassContainer() {
     if (isCurrentlyBookmarked) {
       removeBookmark(car._id);
     } else {
-      // Create the bookmarked vehicle object
       const bookmarkedVehicle: BookmarkedVehicle = {
         id: car._id,
         brand: car.basicInfo?.brand || "Unknown",
