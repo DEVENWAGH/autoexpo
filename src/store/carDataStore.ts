@@ -80,15 +80,16 @@ export const useCarDataStore = create<CarDataState>()(
       carTypes: [],
       isLoading: false,
       error: null,
-      
+
       fetchCars: async () => {
-        // Don't fetch if we're already loading or have cars
-        if (get().isLoading || get().cars.length > 0) {
+        // Only check if we're currently loading
+        if (get().isLoading) {
           return;
         }
         
         set({ isLoading: true, error: null });
         try {
+          // Use the vehicles endpoint to fetch all cars
           const response = await fetch("/api/vehicles/my-vehicles");
           if (!response.ok) {
             throw new Error("Failed to fetch cars");
@@ -143,26 +144,26 @@ export const useCarDataStore = create<CarDataState>()(
           set({ isLoading: false });
         }
       },
-      
+
       filterCars: (filters) => {
         const { cars } = get();
-        
+
         return cars.filter((car) => {
           // Brand filter
           if (filters.brand && car.basicInfo.brand !== filters.brand) {
             return false;
           }
-          
+
           // Model filter
           if (filters.model && car.basicInfo.name !== filters.model) {
             return false;
           }
-          
+
           // Type filter
           if (filters.type && car.basicInfo.carType !== filters.type) {
             return false;
           }
-          
+
           // Budget filter
           if (filters.budget) {
             const { min, max } = getBudgetRange(filters.budget);
@@ -171,7 +172,7 @@ export const useCarDataStore = create<CarDataState>()(
               return false;
             }
           }
-          
+
           // Custom price range filter
           if (filters.minPrice && car.basicInfo.priceExshowroom < filters.minPrice) {
             return false;
@@ -179,22 +180,22 @@ export const useCarDataStore = create<CarDataState>()(
           if (filters.maxPrice && car.basicInfo.priceExshowroom > filters.maxPrice) {
             return false;
           }
-          
+
           // Fuel type filter
           if (filters.fuelType && car.fuelPerformance?.fuelType !== filters.fuelType) {
             return false;
           }
-          
+
           return true;
         });
       },
     }),
     {
       name: "car-data-store",
-      partialize: (state) => ({ 
+      partialize: (state) => ({
         cars: state.cars,
         brands: state.brands,
-        carTypes: state.carTypes
+        carTypes: state.carTypes,
       }),
       // Make sure to merge the items from storage properly
       merge: (persisted, current) => {
@@ -204,7 +205,7 @@ export const useCarDataStore = create<CarDataState>()(
           brands: persisted.brands || [],
           carTypes: persisted.carTypes || [],
         };
-      }
+      },
     }
   )
 );

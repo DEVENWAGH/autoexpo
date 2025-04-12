@@ -77,12 +77,12 @@ function CarsPageContent() {
     filterCars,
   } = useCarDataStore();
 
-  // Initialize filter state with mapped brand name
+  // Initialize filter state with no filters applied by default
   const [filters, setFilters] = useState({
-    brand: initialBrand, // This will be "Tata Motors" if rawBrand was "Tata"
-    model: initialModel,
-    type: initialType,
-    budget: initialBudget,
+    brand: "",
+    model: "",
+    type: "",
+    budget: "",
     fuelType: "",
     minPrice: 0,
     maxPrice: 10000000,
@@ -135,9 +135,19 @@ function CarsPageContent() {
 
   // Apply filters when they change
   useEffect(() => {
-    const filtered = filterCars(filters);
-    setFilteredCars(filtered);
-  }, [filters, filterCars]);
+    if (
+      !filters.brand &&
+      !filters.model &&
+      !filters.type &&
+      !filters.budget &&
+      !filters.fuelType
+    ) {
+      setFilteredCars(cars);
+    } else {
+      const filtered = filterCars(filters);
+      setFilteredCars(filtered);
+    }
+  }, [filters, cars, filterCars]);
 
   // Handle bookmark toggle
   const handleBookmarkToggle = (car: any) => {
