@@ -62,18 +62,19 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
   pages: {
     signIn: "/login",
+    error: "/login",
   },
+
+  secret: process.env.NEXTAUTH_SECRET,
 
   callbacks: {
     async session({ session, token }) {
-      return {
-        ...session,
-        user: {
-          ...session.user,
-          id: token.id,
-          role: token.role,
-        },
-      };
+      if (token && session.user) {
+        session.user.role = token.role;
+        session.user.id = token.id;
+      }
+      console.log("Session created:", JSON.stringify(session, null, 2));
+      return session;
     },
 
     async jwt({ token, user }) {

@@ -7,6 +7,11 @@ import { SessionProvider } from "next-auth/react";
 import { ThemeProvider } from "@/components/theme/theme-provider";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { Toaster } from "react-hot-toast";
+import { checkRequiredEnvVars } from "@/lib/envCheck";
+
+if (typeof window === "undefined") {
+  checkRequiredEnvVars();
+}
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",

@@ -7,6 +7,22 @@ import { useRouter } from "next/navigation";
 import { useLogoStore } from "@/store/useLogoStore";
 import { getBrandNameFromLogo } from "@/utils/brandNameMapping";
 
+// Add the missing HydrationFix component
+const HydrationFix = ({ children }: { children: React.ReactNode }) => {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    // Return empty div with same dimensions during SSR to prevent layout shift
+    return <div style={{ height: "100%", width: "100%" }} />;
+  }
+
+  return <>{children}</>;
+};
+
 interface Props {
   readonly logos: readonly string[];
 }
@@ -99,7 +115,7 @@ export default function LogoCarousel({ logos }: Props) {
   // Handle logo click to navigate to filter page
   const handleLogoClick = (logo: string) => {
     const brandName = getBrandNameFromLogo(logo);
-    
+
     if (brandName) {
       // Navigate to cars or bikes page with brand filter
       const path = activeCategory === "cars" ? "/cars" : "/bikes";
@@ -107,11 +123,47 @@ export default function LogoCarousel({ logos }: Props) {
     }
   };
 
+  // Render logos inside our HydrationFix component to prevent hydration warnings
+  const renderLogoButton = (logo: string, index: number) => {
+    return (
+      <button
+        key={`${logo}-${index}`}
+        className="absolute transition-all duration-500 ease-out"
+        style={{
+          transform: `translateX(-50%) scale(${getScale(
+            index % logos.length
+          )})`,
+          left: `${50 + (index - activeIndex) * 12.5}%`,
+          opacity: getOpacity(index % logos.length),
+          zIndex: 1000 - Math.abs((index % logos.length) - activeIndex),
+        }}
+        aria-label={`Brand logo ${index + 1}`}
+        onClick={() => handleLogoClick(logo)}
+      >
+        <HydrationFix>
+          <div
+            className={`w-48 h-48 flex items-center justify-center ${logoBackgroundColor} rounded-lg shadow-lg mx-4`}
+          >
+            <Image
+              // Use the path directly, no modification needed as they should come correct from the store
+              src={logo}
+              alt={`Brand logo ${index + 1}`}
+              width={logo.includes("kawasaki") ? 150 : 120}
+              height={logo.includes("kawasaki") ? 150 : 120}
+              className="object-contain p-3"
+              draggable={false}
+            />
+          </div>
+        </HydrationFix>
+      </button>
+    );
+  };
+
   return (
     <section
       ref={containerRef}
       aria-label="Logo carousel"
-      className="relative h-56 overflow-hidden my-10 touch-none select-none cursor-grab active:cursor-grabbing"
+      className="relative h-64 my-8 touch-pan-y"
       onMouseDown={handleDragStart}
       onMouseMove={handleDragMove}
       onMouseUp={handleDragEnd}
@@ -128,35 +180,9 @@ export default function LogoCarousel({ logos }: Props) {
       }}
     >
       <div className="flex items-center justify-center relative h-full">
-        {[...logos, ...logos].map((logo, index) => (
-          <button
-            key={`${logo}-${index}`}
-            className="absolute transition-all duration-500 ease-out"
-            style={{
-              transform: `translateX(-50%) scale(${getScale(
-                index % logos.length
-              )})`,
-              left: `${50 + (index - activeIndex) * 12.5}%`, // Fixed equal spacing of 12.5%
-              opacity: getOpacity(index % logos.length),
-              zIndex: 1000 - Math.abs((index % logos.length) - activeIndex),
-            }}
-            aria-label={`Brand logo ${index + 1}`}
-            onClick={() => handleLogoClick(logo)}
-          >
-            <div
-              className={`w-48 h-48 flex items-center justify-center ${logoBackgroundColor} rounded-lg shadow-lg mx-4`}
-            >
-              <Image
-                src={logo}
-                alt={`Brand logo ${index + 1}`}
-                width={logo.includes("kawasaki") ? 150 : 120}
-                height={logo.includes("kawasaki") ? 150 : 120}
-                className="object-contain p-3"
-                draggable={false}
-              />
-            </div>
-          </button>
-        ))}
+        {[...logos, ...logos].map((logo, index) =>
+          renderLogoButton(logo, index)
+        )}
       </div>
     </section>
   );
