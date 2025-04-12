@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/accordion";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { useInitialBrandFromUrl } from "@/utils/brandUtils"; // Import the new utility
 
 // Define a loading component for the Suspense fallback
 function LoadingFallback() {
@@ -55,11 +56,14 @@ function CarsPageContent() {
   const [mounted, setMounted] = useState(false);
   const [showFilters, setShowFilters] = useState(true);
 
-  // Get params from URL
-  const initialBrand = searchParams.get("brand") || "";
+  // Get the raw URL parameters
+  const rawBrand = searchParams.get("brand");
   const initialModel = searchParams.get("model") || "";
   const initialType = searchParams.get("type") || "";
   const initialBudget = searchParams.get("budget") || "";
+
+  // Apply brand name mapping to convert "Tata" to "Tata Motors"
+  const initialBrand = useInitialBrandFromUrl(rawBrand);
 
   // Use our store for car data
   const {
@@ -73,9 +77,9 @@ function CarsPageContent() {
     filterCars,
   } = useCarDataStore();
 
-  // Local filter state
+  // Initialize filter state with mapped brand name
   const [filters, setFilters] = useState({
-    brand: initialBrand,
+    brand: initialBrand, // This will be "Tata Motors" if rawBrand was "Tata"
     model: initialModel,
     type: initialType,
     budget: initialBudget,
