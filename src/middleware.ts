@@ -56,4 +56,18 @@ export async function middleware(request: NextRequest) {
 // Configure which routes the middleware should run on
 export const config = {
   matcher: ['/admin/:path*', '/brands/:path*', '/vehicle/:id*'],
+  
+  // Add this configuration to allow Mongoose in Edge Runtime
+  unstable_allowDynamic: [
+    // Allow all Mongoose/MongoDB related dynamic code
+    '**/node_modules/mongoose/**',
+    '**/node_modules/mongodb/**',
+    '**/node_modules/@mongodb-js/**',
+    '**/node_modules/bson/**',
+    '**/node_modules/whatwg-url/**',
+    '**/node_modules/punycode/**',
+    '**/node_modules/web/**',
+    '**/src/models/**', // Allow your models
+    '**/src/auth.ts', // Allow auth file
+  ],
 };
