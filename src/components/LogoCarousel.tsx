@@ -43,9 +43,7 @@ export default function LogoCarousel({ logos, showTitle = true }: Props) {
   const [mounted, setMounted] = useState(false);
   const router = useRouter();
   const activeCategory = useLogoStore((state) => state.activeCategory);
-  const [failedImages, setFailedImages] = useState<
-    Record<string, boolean | string>
-  >({});
+  const [failedImages, setFailedImages] = useState<Record<string, boolean>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [processedLogos, setProcessedLogos] = useState<string[]>([]);
   const [userInteracting, setUserInteracting] = useState(false);
@@ -72,71 +70,21 @@ export default function LogoCarousel({ logos, showTitle = true }: Props) {
     // Fix logo paths for production environment
     const processed = allLogos.map((logo) => {
       // Make sure path starts with / for Next.js public directory
+      // Also ensure that file names are lowercase for consistency in production (Linux) environments
       if (!logo.startsWith("/")) {
-        return `/${logo}`;
+        return `/${logo}`.toLowerCase();
       }
-      return logo;
+      return logo.toLowerCase(); // Convert to lowercase for consistency across environments
     });
 
     setProcessedLogos(processed);
     setFailedImages({});
     setIsLoading(true);
 
-    // Preload images to check if they exist
-    Promise.all(processed.map((logo) => preloadImage(logo))).finally(() => {
-      setIsLoading(false);
-    });
+    // Reset loading state when logos change
+    const timer = setTimeout(() => setIsLoading(false), 800);
+    return () => clearTimeout(timer);
   }, [allLogos]);
-
-  // Preload image and try alternative extensions if the original fails
-  const preloadImage = async (src: string) => {
-    // Extract base path without extension
-    const basePath = src.includes(".")
-      ? src.substring(0, src.lastIndexOf("."))
-      : src;
-
-    // Try different extensions and cases
-    const variations = [
-      src, // Original path
-      basePath + ".svg",
-      basePath + ".png",
-      basePath + ".jpg",
-      basePath + ".webp",
-      // Try with lowercase filename
-      src.toLowerCase(),
-      basePath.toLowerCase() + ".svg",
-      // Try with uppercase filename
-      src.toUpperCase(),
-      basePath.toUpperCase() + ".SVG",
-    ];
-
-    for (const variation of variations) {
-      try {
-        await new Promise<void>((resolve, reject) => {
-          const img = new Image();
-          img.onload = () => resolve();
-          img.onerror = () => reject();
-          img.src = variation;
-        });
-        // If we get here, the image loaded successfully
-        if (variation !== src) {
-          // Update the failedImages map with the working variation
-          setFailedImages((prev) => ({
-            ...prev,
-            [src]: false,
-            [`${src}_alternative`]: variation,
-          }));
-        }
-        return true;
-      } catch (e) {
-        // Continue to the next variation
-      }
-    }
-
-    // All variations failed
-    setFailedImages((prev) => ({ ...prev, [src]: true }));
-    return false;
-  };
 
   // Add theme-aware styling
   const logoBackgroundColor =
@@ -144,6 +92,105 @@ export default function LogoCarousel({ logos, showTitle = true }: Props) {
       ? "bg-white" // White logos in dark mode
       : "bg-zinc-100"; // Zinc logos in light mode
 
+  // Handle image error
+  const handleImageError = (logo: string) => {
+    console.error(`Failed to load logo image: ${logo}`);
+    setFailedImages((prev) => ({ ...prev, [logo]: true }));
+  };
+
+  // Extract brand name for display in fallbacks
+  const getBrandDisplayName = (logoPath: string) => {
+    const brandName = getBrandNameFromLogo(logoPath);
+    if (brandName) return brandName;
+
+    // Fallback: try to extract name from the filename
+    const parts = logoPath.split("/");
+    const filename = parts[parts.length - 1];
+    return filename
+      .replace(".svg", "")
+      .replace(".png", "")
+      .replace(".jpg", "")
+      .replace(/[-_]/g, " ") // Replace hyphens and underscores with spaces
+      .split(" ")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()) // Capitalize each word
+      .join(" ");
+  };
+
+  // Only continue with the rest of the component if we have logos
+  if (processedLogos.length === 0 && !isLoading) {
+    return (
+      <section className="py-8">
+        {showTitle && (
+          <h2 className="text-2xl font-bold text-center mb-4">
+            Explore Popular Brands
+          </h2>
+        )}
+        <div className="flex justify-center items-center h-64">
+          <p className="text-gray-500">No brand logos available</p>
+        </div>
+      </section>
+    );
+  }
+
+  // Render logos inside our HydrationFix component to prevent hydration warnings
+  const renderLogoButton = (logo: string, index: number) => {
+    // Get brand display name for fallbacks
+    const brandDisplayName = getBrandDisplayName(logo);
+
+    const normalizedIndex =
+      ((index % processedLogos.length) + processedLogos.length) %
+      processedLogos.length;
+
+    // Define a placeholder URL - always use this when the original logo fails to load
+    const placeholderUrl = "/placeholder.svg";
+
+    // Determine which source to use - the logo or the placeholder
+    const imgSrc = failedImages[logo] ? placeholderUrl : logo;
+
+    return (
+      <button
+        key={`${logo}-${index}`}
+        className="absolute transition-all duration-500 ease-out"
+        style={{
+          transform: `translateX(-50%) scale(${getScale(normalizedIndex)})`,
+          left: `${50 + (index - activeIndex) * 12.5}%`,
+          opacity: getOpacity(normalizedIndex),
+          zIndex: 1000 - Math.abs(normalizedIndex - activeIndex),
+        }}
+        aria-label={`Brand logo ${index + 1}`}
+        onClick={() => handleLogoClick(logo)}
+      >
+        <div
+          className={`w-48 h-48 flex items-center justify-center ${logoBackgroundColor} rounded-lg shadow-lg mx-4`}
+        >
+          <div className="relative w-full h-full flex items-center justify-center">
+            <Image
+              src={imgSrc}
+              alt={`${brandDisplayName} logo`}
+              width={120}
+              height={120}
+              className="object-contain p-3 max-w-[80%] max-h-[80%]"
+              draggable={false}
+              onError={() => handleImageError(logo)}
+              priority={
+                index === activeIndex ||
+                index === (activeIndex + 1) % processedLogos.length ||
+                index ===
+                  (activeIndex - 1 + processedLogos.length) %
+                    processedLogos.length
+              }
+              unoptimized={true}
+            />
+            <div className="absolute bottom-2 text-xs text-gray-500">
+              {brandDisplayName}
+            </div>
+          </div>
+        </div>
+      </button>
+    );
+  };
+
+  // The rest of the component (handleDragStart, handleInfiniteScroll, etc.) remains unchanged
   const handleDragStart = (e: React.MouseEvent | React.TouchEvent) => {
     setIsDragging(true);
     setUserInteracting(true); // Mark that user is interacting
@@ -228,53 +275,6 @@ export default function LogoCarousel({ logos, showTitle = true }: Props) {
     return 0.5;
   };
 
-  // Enhanced handle image error function
-  const handleImageError = (logo: string) => {
-    console.error(`Failed to load logo image: ${logo}`);
-
-    // Check if we have an alternative that works
-    if (failedImages[`${logo}_alternative`]) {
-      // Use the alternative in the rendering
-      return;
-    }
-
-    // Try to detect if there's a different casing or extension that might work
-    const basePath = logo.includes(".")
-      ? logo.substring(0, logo.lastIndexOf("."))
-      : logo;
-
-    // Immediately try some common alternatives
-    const img = new Image();
-    img.onload = () => {
-      setFailedImages((prev) => ({
-        ...prev,
-        [logo]: false,
-        [`${logo}_alternative`]: img.src,
-      }));
-    };
-    img.onerror = () => {
-      setFailedImages((prev) => ({ ...prev, [logo]: true }));
-    };
-
-    // Try with PNG instead of SVG
-    if (logo.toLowerCase().endsWith(".svg")) {
-      img.src = basePath + ".png";
-    } else {
-      img.src = basePath + ".svg";
-    }
-  };
-
-  // Extract brand name for display in fallbacks
-  const getBrandDisplayName = (logoPath: string) => {
-    const brandName = getBrandNameFromLogo(logoPath);
-    if (brandName) return brandName;
-
-    // Fallback: try to extract name from the filename
-    const parts = logoPath.split("/");
-    const filename = parts[parts.length - 1];
-    return filename.replace(".svg", "").replace(".png", "").replace(".jpg", "");
-  };
-
   // Auto-scroll animation that respects user interaction
   useEffect(() => {
     if (isLoading || processedLogos.length <= 1 || userInteracting) return;
@@ -318,105 +318,6 @@ export default function LogoCarousel({ logos, showTitle = true }: Props) {
     }
   };
 
-  // Only continue with the rest of the component if we have logos
-  if (processedLogos.length === 0 && !isLoading) {
-    return (
-      <section className="py-8">
-        {showTitle && (
-          <h2 className="text-2xl font-bold text-center mb-4">
-            Explore Popular Brands
-          </h2>
-        )}
-        <div className="flex justify-center items-center h-64">
-          <p className="text-gray-500">No brand logos available</p>
-        </div>
-      </section>
-    );
-  }
-
-  // Render logos inside our HydrationFix component to prevent hydration warnings
-  const renderLogoButton = (logo: string, index: number) => {
-    // Get brand display name for fallbacks
-    const brandDisplayName = getBrandDisplayName(logo);
-
-    const normalizedIndex =
-      ((index % processedLogos.length) + processedLogos.length) %
-      processedLogos.length;
-
-    // Check if we have a working alternative URL
-    const alternativeUrl = failedImages[`${logo}_alternative`];
-    const shouldUseAlternative = alternativeUrl && failedImages[logo] === false;
-
-    // Use the alternative URL if available
-    const imageUrl = shouldUseAlternative ? alternativeUrl : logo;
-
-    if (failedImages[logo] && !shouldUseAlternative) {
-      // Create a placeholder when image fails to load
-      return (
-        <button
-          key={`${logo}-${index}`}
-          className="absolute transition-all duration-500 ease-out"
-          style={{
-            transform: `translateX(-50%) scale(${getScale(normalizedIndex)})`,
-            left: `${50 + (index - activeIndex) * 12.5}%`,
-            opacity: getOpacity(normalizedIndex),
-            zIndex: 1000 - Math.abs(normalizedIndex - activeIndex),
-          }}
-        >
-          <div
-            className={`w-48 h-48 flex items-center justify-center ${logoBackgroundColor} rounded-lg shadow-lg mx-4`}
-          >
-            <div className="text-gray-600 dark:text-gray-400 text-center p-4">
-              <div className="font-medium">{brandDisplayName}</div>
-            </div>
-          </div>
-        </button>
-      );
-    }
-
-    return (
-      <button
-        key={`${logo}-${index}`}
-        className="absolute transition-all duration-500 ease-out"
-        style={{
-          transform: `translateX(-50%) scale(${getScale(normalizedIndex)})`,
-          left: `${50 + (index - activeIndex) * 12.5}%`,
-          opacity: getOpacity(normalizedIndex),
-          zIndex: 1000 - Math.abs(normalizedIndex - activeIndex),
-        }}
-        aria-label={`Brand logo ${index + 1}`}
-        onClick={() => handleLogoClick(logo)}
-      >
-        <div
-          className={`w-48 h-48 flex items-center justify-center ${logoBackgroundColor} rounded-lg shadow-lg mx-4`}
-        >
-          <div className="relative w-full h-full flex items-center justify-center">
-            <Image
-              src={imageUrl}
-              alt={`${brandDisplayName} logo`}
-              width={120}
-              height={120}
-              className="object-contain p-3 max-w-[80%] max-h-[80%]"
-              draggable={false}
-              onError={() => handleImageError(logo)}
-              priority={
-                index === activeIndex ||
-                index === (activeIndex + 1) % processedLogos.length ||
-                index ===
-                  (activeIndex - 1 + processedLogos.length) %
-                    processedLogos.length
-              }
-              unoptimized={true}
-            />
-            <div className="absolute bottom-2 text-xs text-gray-500">
-              {brandDisplayName}
-            </div>
-          </div>
-        </div>
-      </button>
-    );
-  };
-
   // Add title based on the showTitle prop
   const carouselTitle = showTitle ? (
     <h2 className="text-2xl font-bold text-center mb-4">
@@ -441,7 +342,7 @@ export default function LogoCarousel({ logos, showTitle = true }: Props) {
         onKeyDown={handleKeyDown}
         tabIndex={0}
       >
-        {/* Enhanced navigation arrows with animations */}
+        {/* Navigation arrows */}
         <button
           className="absolute left-4 top-1/2 transform -translate-y-1/2 z-[1100] bg-white/80 dark:bg-gray-800/80 rounded-full p-2.5 shadow-lg hover:bg-white dark:hover:bg-gray-700 focus:outline-none transition-all duration-300 ease-out hover:scale-110 active:scale-95 backdrop-blur-sm"
           onClick={() => {
@@ -494,7 +395,7 @@ export default function LogoCarousel({ logos, showTitle = true }: Props) {
           </svg>
         </button>
 
-        {/* Add visual indicators for navigation with increased spacing */}
+        {/* Visual indicators */}
         <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-1.5 pb-2">
           {processedLogos.map((_, idx) => (
             <button
