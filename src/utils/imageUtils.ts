@@ -33,21 +33,36 @@ export const getBrandLogoUrl = (brandName: string): string => {
 };
 
 /**
+ * Get a brand logo path from the brand name
+ * @param brandName The brand name
+ * @returns Logo path
+ */
+export const getBrandLogoByName = (brandName: string): string => {
+  if (!brandName) return '';
+  return `/logos/${brandName.toLowerCase().trim()}.svg`;
+};
+
+/**
  * Properly formats a logo path to prevent duplication issues
  * @param logo The logo path or name
  * @returns A properly formatted logo path
  */
 export const formatLogoPath = (logo: string): string => {
-  // If it's already a full path with /brands/ prefix
-  if (logo.startsWith('/brands/')) {
+  // If it's already a full path with /logos/ prefix
+  if (logo.startsWith('/logos/')) {
     return logo;
+  }
+  
+  // If it's an old-style path with /brands/ prefix
+  if (logo.startsWith('/brands/')) {
+    return logo.replace('/brands/', '/logos/');
   }
   
   // If it already has .svg extension
   if (logo.endsWith('.svg')) {
-    return `/brands/${logo}`;
+    return `/logos/${logo}`;
   }
   
   // Otherwise add both prefix and extension
-  return `/brands/${logo}.svg`;
+  return `/logos/${logo}.svg`;
 };

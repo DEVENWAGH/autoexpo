@@ -27,6 +27,10 @@ export default function LandingPage() {
       if (!logo.startsWith("/")) {
         return `/${logo}`;
       }
+      // Convert old /brands/ paths to /logos/
+      if (logo.startsWith("/brands/")) {
+        return logo.replace("/brands/", "/logos/");
+      }
       return logo;
     });
   }, [allLogos]);

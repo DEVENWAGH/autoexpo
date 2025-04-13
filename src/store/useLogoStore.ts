@@ -16,41 +16,41 @@ export const useLogoStore = create<LogoStoreState>((set, get) => ({
   
   // List all logos that should be shown in the carousel
   carLogos: [
-    '/brands/Mercedes.svg',
-    '/brands/Lexus.svg',
-    '/brands/Toyota.svg',
-    '/brands/Honda.svg',
-    '/brands/Volkswagen.svg',
-    '/brands/Ford.svg',
-    '/brands/Chevrolet.svg',
-    '/brands/Hyundai.svg',
-    '/brands/Kia.svg',
-    '/brands/Nissan.svg',
-    '/brands/Porsche.svg',
-    '/brands/Ferrari.svg',
-    '/brands/Lamborghini.svg',
-    '/brands/Tesla.svg',
-    '/brands/Jeep.svg',
-    '/brands/Skoda.svg',
-    '/brands/MG.svg',
-    '/brands/Volvo.svg',
-    '/brands/Bugatti.svg',
-    '/brands/Bentley.svg',
-    '/brands/AstonMartin.svg',
-    '/brands/LandRover.svg',
-    '/brands/Mini.svg',
-    '/brands/Peugeot.svg',
-    '/brands/RollsRoyce.svg',
-    '/brands/Suzuki.svg',
-    '/brands/Tata.svg',
-    '/brands/Mahindra.svg',
+    '/logos/Mercedes.svg',
+    '/logos/Lexus.svg',     // Updated path
+    '/logos/Toyota.svg',
+    '/logos/Honda.svg',
+    '/logos/Volkswagen.svg',
+    '/logos/Ford.svg',
+    '/logos/Chevrolet.svg',
+    '/logos/Hyundai.svg',
+    '/logos/Kia.svg',
+    '/logos/Nissan.svg',
+    '/logos/Porsche.svg',
+    '/logos/Ferrari.svg',
+    '/logos/Lamborghini.svg',
+    '/logos/Tesla.svg',
+    '/logos/Jeep.svg',
+    '/logos/Skoda.svg',
+    '/logos/MG.svg',
+    '/logos/Volvo.svg',
+    '/logos/Bugatti.svg',
+    '/logos/Bentley.svg',
+    '/logos/AstonMartin.svg',
+    '/logos/LandRover.svg',
+    '/logos/Mini.svg',
+    '/logos/Peugeot.svg',
+    '/logos/RollsRoyce.svg',
+    '/logos/Suzuki.svg',
+    '/logos/Tata.svg',       // Updated path
+    '/logos/Mahindra.svg',
   ],
   
   // Updated to include only logos that are likely to exist
   bikeLogos: [
-    '/brands/BMW.svg',
-    '/brands/Honda.svg',
-    '/brands/Suzuki.svg'
+    '/logos/BMW.svg',
+    '/logos/Honda.svg',
+    '/logos/Suzuki.svg'
   ],
   
   // Combined array of all unique logos
@@ -66,6 +66,18 @@ export const useLogoStore = create<LogoStoreState>((set, get) => ({
     });
     
     return combined;
+  },
+  
+  setActiveCategory: (category) => set({ activeCategory: category }),
+  
+  // Helper function to get logo by brand name
+  getBrandLogo: (brand) => {
+    if (!brand) return undefined;
+    
+    const normalizedBrand = get().getNormalizedBrandName(brand);
+    const allLogos = [...get().carLogos, ...get().bikeLogos];
+    
+    return allLogos.find(logo => logo.toLowerCase().includes(normalizedBrand.toLowerCase()));
   },
   
   getNormalizedBrandName: (brand) => {
@@ -88,32 +100,8 @@ export const useLogoStore = create<LogoStoreState>((set, get) => ({
     return normalizedMap[normalized] || normalized;
   },
   
-  // Add the missing function that was causing the error
   getFilterBrandName: (brand) => {
-    // Reuse the existing normalization function for consistency
-    return get().getNormalizedBrandName(brand);
-  },
-  
-  setActiveCategory: (category) => set({ activeCategory: category }),
-  
-  // Helper function to get logo by brand name
-  getBrandLogo: (brand) => {
-    const state = get();
-    const normalizedBrand = state.getNormalizedBrandName(brand);
-    
-    // First try category-specific logos
-    const categoryLogos = state.activeCategory === 'cars' ? state.carLogos : state.bikeLogos;
-    const brandLogo = categoryLogos.find(logo => 
-      logo.toLowerCase().includes(normalizedBrand.toLowerCase())
-    );
-    
-    // If not found in category, try all logos
-    if (!brandLogo) {
-      return state.allLogos.find(logo => 
-        logo.toLowerCase().includes(normalizedBrand.toLowerCase())
-      );
-    }
-    
-    return brandLogo;
-  },
+    if (!brand) return '';
+    return brand.toLowerCase().replace(/[-\s]+/g, '-');
+  }
 }));

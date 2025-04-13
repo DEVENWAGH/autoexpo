@@ -17,7 +17,7 @@ export const checkLogoExists = async (logoPath: string): Promise<boolean> => {
 };
 
 /**
- * Common brand names that might be in the public/brands directory
+ * Common brand names that might be in the public/logos directory
  * This serves as a fallback if directory reading isn't available
  */
 export const COMMON_CAR_BRANDS = [
@@ -39,7 +39,7 @@ export const COMMON_BIKE_BRANDS = [
 /**
  * Creates logo paths for provided brand names
  */
-export const generateLogoPaths = (brands: string[], prefix: string = '/brands/', extension: string = '.svg'): string[] => {
+export const generateLogoPaths = (brands: string[], prefix: string = '/logos/', extension: string = '.svg'): string[] => {
   return brands.map(brand => `${prefix}${brand}${extension}`);
 };
 
