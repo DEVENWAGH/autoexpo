@@ -19,6 +19,20 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
+  async headers() {
+    return [
+      {
+        // Apply to all static files under public/brands
+        source: '/brands/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=86400, must-revalidate',
+          },
+        ],
+      },
+    ]
+  },
 };
 
 export default nextConfig;
