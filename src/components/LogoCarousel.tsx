@@ -43,7 +43,9 @@ export default function LogoCarousel({ logos, showTitle = true }: Props) {
   const [mounted, setMounted] = useState(false);
   const router = useRouter();
   const activeCategory = useLogoStore((state) => state.activeCategory);
-  const [failedImages, setFailedImages] = useState<Record<string, boolean>>({});
+  const [failedImages, setFailedImages] = useState<
+    Record<string, boolean | string>
+  >({});
   const [isLoading, setIsLoading] = useState(true);
   const [processedLogos, setProcessedLogos] = useState<string[]>([]);
   const [userInteracting, setUserInteracting] = useState(false);
@@ -80,10 +82,61 @@ export default function LogoCarousel({ logos, showTitle = true }: Props) {
     setFailedImages({});
     setIsLoading(true);
 
-    // Reset loading state when logos change
-    const timer = setTimeout(() => setIsLoading(false), 800);
-    return () => clearTimeout(timer);
+    // Preload images to check if they exist
+    Promise.all(processed.map((logo) => preloadImage(logo))).finally(() => {
+      setIsLoading(false);
+    });
   }, [allLogos]);
+
+  // Preload image and try alternative extensions if the original fails
+  const preloadImage = async (src: string) => {
+    // Extract base path without extension
+    const basePath = src.includes(".")
+      ? src.substring(0, src.lastIndexOf("."))
+      : src;
+
+    // Try different extensions and cases
+    const variations = [
+      src, // Original path
+      basePath + ".svg",
+      basePath + ".png",
+      basePath + ".jpg",
+      basePath + ".webp",
+      // Try with lowercase filename
+      src.toLowerCase(),
+      basePath.toLowerCase() + ".svg",
+      // Try with uppercase filename
+      src.toUpperCase(),
+      basePath.toUpperCase() + ".SVG",
+    ];
+
+    for (const variation of variations) {
+      try {
+        await new Promise<void>((resolve, reject) => {
+          const img = new Image();
+          img.onload = () => resolve();
+          img.onerror = () => reject();
+          img.src = variation;
+        });
+        // If we get here, the image loaded successfully
+        if (variation !== src) {
+          // Update the failedImages map with the working variation
+          setFailedImages((prev) => ({
+            ...prev,
+            [src]: false,
+            [`${src}_alternative`]: variation,
+          }));
+        }
+        return true;
+      } catch (e) {
+        // Continue to the next variation
+      }
+    }
+
+    // All variations failed
+    setFailedImages((prev) => ({ ...prev, [src]: true }));
+    return false;
+  };
 
   // Add theme-aware styling
   const logoBackgroundColor =
@@ -175,10 +228,40 @@ export default function LogoCarousel({ logos, showTitle = true }: Props) {
     return 0.5;
   };
 
-  // Handle image error
+  // Enhanced handle image error function
   const handleImageError = (logo: string) => {
     console.error(`Failed to load logo image: ${logo}`);
-    setFailedImages((prev) => ({ ...prev, [logo]: true }));
+
+    // Check if we have an alternative that works
+    if (failedImages[`${logo}_alternative`]) {
+      // Use the alternative in the rendering
+      return;
+    }
+
+    // Try to detect if there's a different casing or extension that might work
+    const basePath = logo.includes(".")
+      ? logo.substring(0, logo.lastIndexOf("."))
+      : logo;
+
+    // Immediately try some common alternatives
+    const img = new Image();
+    img.onload = () => {
+      setFailedImages((prev) => ({
+        ...prev,
+        [logo]: false,
+        [`${logo}_alternative`]: img.src,
+      }));
+    };
+    img.onerror = () => {
+      setFailedImages((prev) => ({ ...prev, [logo]: true }));
+    };
+
+    // Try with PNG instead of SVG
+    if (logo.toLowerCase().endsWith(".svg")) {
+      img.src = basePath + ".png";
+    } else {
+      img.src = basePath + ".svg";
+    }
   };
 
   // Extract brand name for display in fallbacks
@@ -260,7 +343,14 @@ export default function LogoCarousel({ logos, showTitle = true }: Props) {
       ((index % processedLogos.length) + processedLogos.length) %
       processedLogos.length;
 
-    if (failedImages[logo]) {
+    // Check if we have a working alternative URL
+    const alternativeUrl = failedImages[`${logo}_alternative`];
+    const shouldUseAlternative = alternativeUrl && failedImages[logo] === false;
+
+    // Use the alternative URL if available
+    const imageUrl = shouldUseAlternative ? alternativeUrl : logo;
+
+    if (failedImages[logo] && !shouldUseAlternative) {
       // Create a placeholder when image fails to load
       return (
         <button
@@ -302,7 +392,7 @@ export default function LogoCarousel({ logos, showTitle = true }: Props) {
         >
           <div className="relative w-full h-full flex items-center justify-center">
             <Image
-              src={logo}
+              src={imageUrl}
               alt={`${brandDisplayName} logo`}
               width={120}
               height={120}
