@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { useLogoStore } from "@/store/useLogoStore";
 import { getBrandNameFromLogo } from "@/utils/brandNameMapping";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
+import { createAssetUrl } from "@/utils/logoUtils";
 
 // Add the missing HydrationFix component
 const HydrationFix = ({ children }: { children: React.ReactNode }) => {
@@ -125,11 +126,14 @@ export default function LogoCarousel({ logos, showTitle = true }: Props) {
   // Render logos inside our HydrationFix component to prevent hydration warnings
   const renderLogoButton = (logo: string, index: number) => {
     // Get brand display name for fallbacks
-    const brandDisplayName = getBrandDisplayName(logo);
+    const brandDisplayName = getBrandNameFromLogo(logo);
 
     const normalizedIndex =
       ((index % processedLogos.length) + processedLogos.length) %
       processedLogos.length;
+
+    // Use the direct path to the SVG file with a query parameter to prevent caching issues
+    const imgSrc = `${logo}?v=1`;
 
     return (
       <button
@@ -149,7 +153,7 @@ export default function LogoCarousel({ logos, showTitle = true }: Props) {
         >
           <div className="relative w-full h-full flex items-center justify-center">
             <Image
-              src={logo}
+              src={imgSrc}
               alt={`${brandDisplayName} logo`}
               width={120}
               height={120}

@@ -17,18 +17,17 @@ export default function LandingPage() {
   const [use3D, setUse3D] = useState(false);
   const [isHighEndDevice, setIsHighEndDevice] = useState(false);
 
-  // Fix case sensitivity for specific brand logos
+  // Process logo paths only once when allLogos changes
   const processedLogos = useMemo(() => {
     if (!allLogos || allLogos.length === 0) return [];
 
-    // Apply specific fixes for known problematic logos
+    // Simply ensure consistent casing and path format for SVG files
     return allLogos.map((logo) => {
-      // Convert to lowercase for consistent handling
-      const lowercasePath = logo.toLowerCase();
-
-      // Adjust specific brand paths as needed - no file changes needed
-      // just let the component handle the errors naturally
-      return lowercasePath;
+      // Make sure path starts with / for Next.js public directory
+      if (!logo.startsWith("/")) {
+        return `/${logo}`;
+      }
+      return logo;
     });
   }, [allLogos]);
 
