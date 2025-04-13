@@ -8,15 +8,29 @@ import LogoCarousel from "./LogoCarousel";
 import ThreeDLogoScroller from "./3DLogoScroller";
 import { useLogoStore } from "@/store/useLogoStore";
 import { useTheme } from "next-themes";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 
 export default function LandingPage() {
-  
   const { allLogos, carLogos } = useLogoStore();
   const { theme, resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [use3D, setUse3D] = useState(false);
   const [isHighEndDevice, setIsHighEndDevice] = useState(false);
+
+  // Fix case sensitivity for specific brand logos
+  const processedLogos = useMemo(() => {
+    if (!allLogos || allLogos.length === 0) return [];
+
+    // Apply specific fixes for known problematic logos
+    return allLogos.map((logo) => {
+      // Convert to lowercase for consistent handling
+      const lowercasePath = logo.toLowerCase();
+
+      // Adjust specific brand paths as needed - no file changes needed
+      // just let the component handle the errors naturally
+      return lowercasePath;
+    });
+  }, [allLogos]);
 
   useEffect(() => {
     setMounted(true);
@@ -44,13 +58,19 @@ export default function LandingPage() {
       <Navbar />
       <main className="container mx-auto px-4 max-w-[1440px]">
         <Hero />
-        {/* Pass all logos directly without filtering */}
-        <LogoCarousel logos={allLogos} showTitle={true} />
+        {/* Pass processed logos directly to LogoCarousel */}
+        <LogoCarousel
+          logos={processedLogos.length > 0 ? processedLogos : allLogos}
+          showTitle={true}
+        />
 
         {/* Only show 3D version if enabled and user has opted in */}
         {mounted && use3D && isHighEndDevice && (
           <div className="mt-12">
-            <ThreeDLogoScroller logos={allLogos} showTitle={true} />
+            <ThreeDLogoScroller
+              logos={processedLogos.length > 0 ? processedLogos : allLogos}
+              showTitle={true}
+            />
           </div>
         )}
 

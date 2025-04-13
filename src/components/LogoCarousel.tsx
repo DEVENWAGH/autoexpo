@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import Image from "next/image";
 import { useTheme } from "next-themes";
 import { useRouter } from "next/navigation";
@@ -35,7 +35,7 @@ export default function LogoCarousel({ logos, showTitle = true }: Props) {
   const allLogos = logos || logoStore.allLogos;
 
   // Start from middle by setting initial active index to middle of array
-  const [activeIndex, setActiveIndex] = useState(0); // Start at 0 to avoid issues with empty arrays
+  const [activeIndex, setActiveIndex] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [startX, setStartX] = useState(0);
@@ -45,17 +45,28 @@ export default function LogoCarousel({ logos, showTitle = true }: Props) {
   const activeCategory = useLogoStore((state) => state.activeCategory);
   const [failedImages, setFailedImages] = useState<Record<string, boolean>>({});
   const [isLoading, setIsLoading] = useState(true);
-  const [processedLogos, setProcessedLogos] = useState<string[]>([]);
   const [userInteracting, setUserInteracting] = useState(false);
   const [lastInteraction, setLastInteraction] = useState(0);
   const autoScrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Process logo paths only once when allLogos changes
+  const processedLogos = useMemo(() => {
+    return allLogos.map((logo) => {
+      // Make sure path starts with / for Next.js public directory
+      // Also ensure that file names are lowercase for consistency in production (Linux) environments
+      if (!logo.startsWith("/")) {
+        return `/${logo}`.toLowerCase();
+      }
+      return logo.toLowerCase(); // Convert to lowercase for consistency across environments
+    });
+  }, [allLogos]);
+
   // Update active index when logos change
   useEffect(() => {
-    if (allLogos.length > 0) {
-      setActiveIndex(Math.floor(allLogos.length / 2));
+    if (processedLogos.length > 0) {
+      setActiveIndex(Math.floor(processedLogos.length / 2));
     }
-  }, [allLogos]);
+  }, [processedLogos.length]);
 
   // Ensure component is mounted to avoid hydration issues
   useEffect(() => {
@@ -64,27 +75,6 @@ export default function LogoCarousel({ logos, showTitle = true }: Props) {
     const timer = setTimeout(() => setIsLoading(false), 800);
     return () => clearTimeout(timer);
   }, []);
-
-  // Process logo paths to ensure they work in production
-  useEffect(() => {
-    // Fix logo paths for production environment
-    const processed = allLogos.map((logo) => {
-      // Make sure path starts with / for Next.js public directory
-      // Also ensure that file names are lowercase for consistency in production (Linux) environments
-      if (!logo.startsWith("/")) {
-        return `/${logo}`.toLowerCase();
-      }
-      return logo.toLowerCase(); // Convert to lowercase for consistency across environments
-    });
-
-    setProcessedLogos(processed);
-    setFailedImages({});
-    setIsLoading(true);
-
-    // Reset loading state when logos change
-    const timer = setTimeout(() => setIsLoading(false), 800);
-    return () => clearTimeout(timer);
-  }, [allLogos]);
 
   // Add theme-aware styling
   const logoBackgroundColor =
@@ -141,12 +131,6 @@ export default function LogoCarousel({ logos, showTitle = true }: Props) {
       ((index % processedLogos.length) + processedLogos.length) %
       processedLogos.length;
 
-    // Define a placeholder URL - always use this when the original logo fails to load
-    const placeholderUrl = "/placeholder.svg";
-
-    // Determine which source to use - the logo or the placeholder
-    const imgSrc = failedImages[logo] ? placeholderUrl : logo;
-
     return (
       <button
         key={`${logo}-${index}`}
@@ -165,12 +149,13 @@ export default function LogoCarousel({ logos, showTitle = true }: Props) {
         >
           <div className="relative w-full h-full flex items-center justify-center">
             <Image
-              src={imgSrc}
+              src={logo}
               alt={`${brandDisplayName} logo`}
               width={120}
               height={120}
               className="object-contain p-3 max-w-[80%] max-h-[80%]"
               draggable={false}
+              unoptimized={true}
               onError={() => handleImageError(logo)}
               priority={
                 index === activeIndex ||
@@ -179,7 +164,6 @@ export default function LogoCarousel({ logos, showTitle = true }: Props) {
                   (activeIndex - 1 + processedLogos.length) %
                     processedLogos.length
               }
-              unoptimized={true}
             />
             <div className="absolute bottom-2 text-xs text-gray-500">
               {brandDisplayName}
