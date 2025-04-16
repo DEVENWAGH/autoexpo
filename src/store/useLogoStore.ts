@@ -1,14 +1,13 @@
 import { create } from 'zustand';
 
 interface LogoStoreState {
-  activeCategory: string;
+  activeCategory: 'cars' | 'bikes';
   carLogos: string[];
   bikeLogos: string[];
-  allLogos: string[]; // Added all logos array
-  setActiveCategory: (category: string) => void;
-  getBrandLogo: (brand: string) => string | undefined;
-  getNormalizedBrandName: (brand: string) => string;
-  getFilterBrandName: (brand: string) => string; // Add the missing function
+  allLogos: string[];
+  setActiveCategory: (category: 'cars' | 'bikes') => void;
+  addLogos: (logos: string[]) => void;
+  addBikeLogos: (logos: string[]) => void;
 }
 
 export const useLogoStore = create<LogoStoreState>((set, get) => ({
@@ -16,92 +15,64 @@ export const useLogoStore = create<LogoStoreState>((set, get) => ({
   
   // List all logos that should be shown in the carousel
   carLogos: [
-    '/logos/Mercedes.svg',
-    '/logos/Lexus.svg',     // Updated path
-    '/logos/Toyota.svg',
-    '/logos/Honda.svg',
-    '/logos/Volkswagen.svg',
-    '/logos/Ford.svg',
-    '/logos/Chevrolet.svg',
-    '/logos/Hyundai.svg',
-    '/logos/Kia.svg',
-    '/logos/Nissan.svg',
-    '/logos/Porsche.svg',
-    '/logos/Ferrari.svg',
-    '/logos/Lamborghini.svg',
-    '/logos/Tesla.svg',
-    '/logos/Jeep.svg',
-    '/logos/Skoda.svg',
-    '/logos/MG.svg',
-    '/logos/Volvo.svg',
-    '/logos/Bugatti.svg',
-    '/logos/Bentley.svg',
-    '/logos/AstonMartin.svg',
-    '/logos/LandRover.svg',
-    '/logos/Mini.svg',
-    '/logos/Peugeot.svg',
-    '/logos/RollsRoyce.svg',
-    '/logos/Suzuki.svg',
-    '/logos/Tata.svg',       // Updated path
-    '/logos/Mahindra.svg',
+    '/logos/mercedes.svg',
+    '/logos/lexus.svg',
+    '/logos/toyota.svg',
+    '/logos/honda.svg',
+    '/logos/volkswagen.svg',
+    '/logos/ford.svg',
+    '/logos/chevrolet.svg',
+    '/logos/hyundai.svg',
+    '/logos/kia.svg',
+    '/logos/nissan.svg',
+    '/logos/porsche.svg',
+    '/logos/ferrari.svg',
+    '/logos/lamborghini.svg',
+    '/logos/tesla.svg',
+    '/logos/jeep.svg',
+    '/logos/skoda.svg',
+    '/logos/mg.svg',
+    '/logos/volvo.svg',
+    '/logos/bugatti.svg',
+    '/logos/bentley.svg',
+    '/logos/astonmartin.svg',
+    '/logos/landrover.svg',
+    '/logos/mini.svg',
+    '/logos/peugeot.svg',
+    '/logos/rollsroyce.svg',
+    '/logos/suzuki.svg',
+    '/logos/tata.svg',
+    '/logos/mahindra.svg',
   ],
   
-  // Updated to include only logos that are likely to exist
+  // Simplify bike logo paths - just use brand names without extensions
+  // The component will try multiple paths/extensions to find the right file
   bikeLogos: [
-    '/logos/BMW.svg',
-    '/logos/Honda.svg',
-    '/logos/Suzuki.svg'
+    'yamaha',
+    'honda',
+    'suzuki',
+    'kawasaki',
+    'ducati',
+    'harley-davidson',
+    'triumph',
+    'bmw',
+    'ktm',
+    'royal-enfield',
+    'tvs',
+    'bajaj',
+    'hero',
+    'benelli',
+    'aprilia',
   ],
   
-  // Combined array of all unique logos
+  // Dynamically select logos based on active category
   get allLogos() {
-    const carSet = new Set(get().carLogos);
-    const combined = [...get().carLogos];
-    
-    // Add bike logos that aren't already in the car logos
-    get().bikeLogos.forEach(bikeLogo => {
-      if (!carSet.has(bikeLogo)) {
-        combined.push(bikeLogo);
-      }
-    });
-    
-    return combined;
+    return get().activeCategory === 'cars' ? get().carLogos : get().bikeLogos;
   },
   
   setActiveCategory: (category) => set({ activeCategory: category }),
   
-  // Helper function to get logo by brand name
-  getBrandLogo: (brand) => {
-    if (!brand) return undefined;
-    
-    const normalizedBrand = get().getNormalizedBrandName(brand);
-    const allLogos = [...get().carLogos, ...get().bikeLogos];
-    
-    return allLogos.find(logo => logo.toLowerCase().includes(normalizedBrand.toLowerCase()));
-  },
+  addLogos: (logos) => set((state) => ({ carLogos: [...logos] })),
   
-  getNormalizedBrandName: (brand) => {
-    if (!brand) return '';
-    
-    // Handle special cases and normalize brand names
-    const normalizedMap: Record<string, string> = {
-      'mercedes-benz': 'Mercedes',
-      'mercedes': 'Mercedes',
-      'tata motors': 'Tata',
-      'land rover': 'Land Rover',
-      'mg motor': 'MG',
-      'harley davidson': 'Harley Davidson',
-      'royal enfield': 'Royal Enfield',
-      'rolls royce': 'Rolls Royce',
-      'aston martin': 'Aston Martin'
-    }
-    
-    const normalized = brand.toLowerCase().trim();
-    return normalizedMap[normalized] || normalized;
-  },
-  
-  getFilterBrandName: (brand) => {
-    if (!brand) return '';
-    return brand.toLowerCase().replace(/[-\s]+/g, '-');
-  }
+  addBikeLogos: (logos) => set((state) => ({ bikeLogos: [...logos] })),
 }));

@@ -68,7 +68,7 @@ export async function DELETE(
     // Update userId access for Auth.js v5
     if (
       vehicle.createdBy.toString() !== (session.user as any).id && 
-      !(session.user as any).isAdmin
+      (session.user as any).role !== 'admin'
     ) {
       return NextResponse.json({ error: 'Not authorized' }, { status: 403 });
     }

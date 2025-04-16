@@ -32,8 +32,13 @@ interface Props {
 
 export default function LogoCarousel({ logos, showTitle = true }: Props) {
   const logoStore = useLogoStore();
-  // Use provided logos or all logos from the store
-  const allLogos = logos || logoStore.allLogos;
+  // Get logos directly from store based on active category
+  const activeCategory = useLogoStore((state) => state.activeCategory);
+  const storeLogos =
+    activeCategory === "cars" ? logoStore.carLogos : logoStore.bikeLogos;
+
+  // Use provided logos or directly get from store based on active category
+  const allLogos = logos || storeLogos;
 
   // Start from middle by setting initial active index to middle of array
   const [activeIndex, setActiveIndex] = useState(0);
@@ -43,31 +48,65 @@ export default function LogoCarousel({ logos, showTitle = true }: Props) {
   const { theme, resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const router = useRouter();
-  const activeCategory = useLogoStore((state) => state.activeCategory);
   const [failedImages, setFailedImages] = useState<Record<string, boolean>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [userInteracting, setUserInteracting] = useState(false);
   const [lastInteraction, setLastInteraction] = useState(0);
   const autoScrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Reset carousel when category or logos change
+  useEffect(() => {
+    console.log("Category or logos changed:", activeCategory, allLogos.length);
+    setIsLoading(true);
+    setFailedImages({});
+
+    if (allLogos.length > 0) {
+      // Reset to middle position when logos change
+      setActiveIndex(Math.floor(allLogos.length / 2));
+    }
+
+    // Set loading false after a delay to ensure proper rendering
+    const timer = setTimeout(() => setIsLoading(false), 800);
+    return () => clearTimeout(timer);
+  }, [allLogos.length, activeCategory]);
+
   // Process logo paths only once when allLogos changes
   const processedLogos = useMemo(() => {
+    console.log("Processing logos for category:", activeCategory);
+    if (!allLogos || allLogos.length === 0) return [];
+
     return allLogos.map((logo) => {
       // Make sure path starts with / for Next.js public directory
-      // Also ensure that file names are lowercase for consistency in production (Linux) environments
       if (!logo.startsWith("/")) {
         return `/${logo}`.toLowerCase();
       }
-      return logo.toLowerCase(); // Convert to lowercase for consistency across environments
-    });
-  }, [allLogos]);
 
-  // Update active index when logos change
-  useEffect(() => {
-    if (processedLogos.length > 0) {
-      setActiveIndex(Math.floor(processedLogos.length / 2));
-    }
-  }, [processedLogos.length]);
+      // Special handling for bike logos - try multiple potential paths
+      if (activeCategory === "bikes") {
+        // Already has correct path format - keep it
+        if (logo.includes("/bike-logos/")) {
+          return logo.toLowerCase();
+        }
+
+        // If path uses /bikes/ directory, keep as is
+        if (logo.includes("/bikes/")) {
+          return logo.toLowerCase();
+        }
+
+        // If path uses /logos/ directory, remap to bike-logos
+        if (logo.includes("/logos/")) {
+          return logo.replace("/logos/", "/bike-logos/").toLowerCase();
+        }
+
+        // Extract filename for a brand new path
+        const parts = logo.split("/");
+        const filename = parts[parts.length - 1];
+        return `/bike-logos/${filename}`.toLowerCase();
+      }
+
+      return logo.toLowerCase(); // Convert to lowercase for consistency
+    });
+  }, [allLogos, activeCategory]);
 
   // Ensure component is mounted to avoid hydration issues
   useEffect(() => {
@@ -132,12 +171,51 @@ export default function LogoCarousel({ logos, showTitle = true }: Props) {
       ((index % processedLogos.length) + processedLogos.length) %
       processedLogos.length;
 
-    // Use the direct path to the SVG file with a query parameter to prevent caching issues
-    const imgSrc = `${logo}?v=1`;
+    // Try different fallback paths if the main one fails
+    let imgSrc = logo;
+
+    // If this image previously failed, try some fallbacks
+    if (failedImages[logo]) {
+      if (activeCategory === "bikes") {
+        // Try alternative paths for bike logos
+        if (logo.includes("bike-logos")) {
+          // Try regular logos folder
+          imgSrc = logo.replace("/bike-logos/", "/logos/");
+        } else if (logo.includes("bikes")) {
+          // Try bike-logos folder
+          imgSrc = logo.replace("/bikes/", "/bike-logos/");
+        } else {
+          // Try a different path structure
+          const parts = logo.split("/");
+          const filename = parts[parts.length - 1];
+          imgSrc = `/bikes/${filename}`;
+        }
+      } else {
+        // Try alternative paths for car logos
+        if (logo.includes("logos")) {
+          // Try car-logos folder
+          imgSrc = logo.replace("/logos/", "/car-logos/");
+        } else {
+          // Try a different extension
+          imgSrc = logo.replace(".svg", ".png");
+        }
+      }
+    }
+
+    // Add cache-busting to prevent stale images
+    imgSrc = `${imgSrc}?v=${activeCategory}-${Date.now().toString().slice(0, 5)}`;
+
+    // Log any image that fails to load
+    const handleImgError = () => {
+      console.error(
+        `Failed to load logo: ${logo} for category: ${activeCategory}`
+      );
+      handleImageError(logo);
+    };
 
     return (
       <button
-        key={`${logo}-${index}`}
+        key={`${logo}-${index}-${activeCategory}`}
         className="absolute transition-all duration-500 ease-out"
         style={{
           transform: `translateX(-50%) scale(${getScale(normalizedIndex)})`,
@@ -152,23 +230,35 @@ export default function LogoCarousel({ logos, showTitle = true }: Props) {
           className={`w-48 h-48 flex items-center justify-center ${logoBackgroundColor} rounded-lg shadow-lg mx-4`}
         >
           <div className="relative w-full h-full flex items-center justify-center">
-            <Image
-              src={imgSrc}
-              alt={`${brandDisplayName} logo`}
-              width={120}
-              height={120}
-              className="object-contain p-3 max-w-[80%] max-h-[80%]"
-              draggable={false}
-              unoptimized={true}
-              onError={() => handleImageError(logo)}
-              priority={
-                index === activeIndex ||
-                index === (activeIndex + 1) % processedLogos.length ||
-                index ===
-                  (activeIndex - 1 + processedLogos.length) %
-                    processedLogos.length
-              }
-            />
+            {failedImages[logo] && failedImages[imgSrc] ? (
+              // If both original and fallback failed, show text version
+              <div className="flex flex-col items-center justify-center h-full">
+                <div className="h-16 w-16 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center mb-2">
+                  <span className="text-2xl font-bold">
+                    {brandDisplayName.charAt(0)}
+                  </span>
+                </div>
+                <span className="text-sm font-medium">{brandDisplayName}</span>
+              </div>
+            ) : (
+              <Image
+                src={imgSrc}
+                alt={`${brandDisplayName} logo`}
+                width={120}
+                height={120}
+                className="object-contain p-3 max-w-[80%] max-h-[80%]"
+                draggable={false}
+                unoptimized={true}
+                onError={handleImgError}
+                priority={
+                  index === activeIndex ||
+                  index === (activeIndex + 1) % processedLogos.length ||
+                  index ===
+                    (activeIndex - 1 + processedLogos.length) %
+                      processedLogos.length
+                }
+              />
+            )}
             <div className="absolute bottom-2 text-xs text-gray-500">
               {brandDisplayName}
             </div>
@@ -286,12 +376,12 @@ export default function LogoCarousel({ logos, showTitle = true }: Props) {
     };
   }, []);
 
-  // Handle logo click to navigate to filter page
+  // Handle logo click to navigate to filter page with current category
   const handleLogoClick = (logo: string) => {
     const brandName = getBrandNameFromLogo(logo);
 
     if (brandName) {
-      // Navigate to cars or bikes page with brand filter
+      // Navigate to cars or bikes page with brand filter based on current category
       const path = activeCategory === "cars" ? "/cars" : "/bikes";
       router.push(`${path}?brand=${encodeURIComponent(brandName)}`);
     }

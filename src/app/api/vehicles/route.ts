@@ -274,7 +274,7 @@ export async function GET(req: NextRequest) {
     }
     
     // Check if admin (add your admin check logic)
-    if (!(session.user as any).isAdmin) {
+    if ((session.user as any).role !== 'admin') {
       return NextResponse.json({ error: 'Not authorized' }, { status: 403 });
     }
     

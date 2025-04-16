@@ -5,7 +5,7 @@ import { useLogoStore } from '@/store/useLogoStore';
  * Hook for loading all brand logos dynamically
  */
 export function useDynamicLogos() {
-  const { addLogos, allLogos } = useLogoStore();
+  const { addLogos, addBikeLogos, carLogos, bikeLogos } = useLogoStore();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
@@ -15,18 +15,32 @@ export function useDynamicLogos() {
       setError(null);
       
       try {
-        // Fetch all logos from the API
-        const response = await fetch('/api/logos');
+        // Fetch car logos from the API
+        const carResponse = await fetch('/api/logos?category=cars');
         
-        if (!response.ok) {
-          throw new Error(`Failed to fetch logos: ${response.statusText}`);
+        if (carResponse.ok) {
+          const carData = await carResponse.json();
+          if (carData.status === 'success' && carData.logos?.length > 0) {
+            // Make sure all paths are lowercase
+            const lowercaseLogos = carData.logos.map((logo: string) => logo.toLowerCase());
+            addLogos(lowercaseLogos);
+          }
         }
         
-        const data = await response.json();
+        // Fetch bike logos from the API
+        const bikeResponse = await fetch('/api/logos?category=bikes');
         
-        if (data.status === 'success' && data.logos?.length > 0) {
-          // Add the logos to the store
-          addLogos(data.logos);
+        if (bikeResponse.ok) {
+          const bikeData = await bikeResponse.json();
+          if (bikeData.status === 'success' && bikeData.logos?.length > 0) {
+            // Make sure all paths are lowercase
+            const lowercaseLogos = bikeData.logos.map((logo: string) => logo.toLowerCase());
+            addBikeLogos(lowercaseLogos);
+          }
+        }
+        
+        if (!carResponse.ok && !bikeResponse.ok) {
+          throw new Error('Failed to fetch logos');
         }
       } catch (err) {
         console.error('Error loading logos:', err);
@@ -37,10 +51,10 @@ export function useDynamicLogos() {
     }
     
     // Only fetch if we need to
-    if (allLogos.length === 0) {
+    if (carLogos.length === 0 || bikeLogos.length === 0) {
       loadAllLogos();
     }
-  }, [addLogos, allLogos.length]);
+  }, [addLogos, addBikeLogos, carLogos.length, bikeLogos.length]);
   
   return { isLoading, error };
 }

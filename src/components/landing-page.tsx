@@ -11,13 +11,13 @@ import { useTheme } from "next-themes";
 import { useEffect, useState, useMemo } from "react";
 
 export default function LandingPage() {
-  const { allLogos, carLogos } = useLogoStore();
+  const { allLogos, setActiveCategory, activeCategory } = useLogoStore();
   const { theme, resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [use3D, setUse3D] = useState(false);
   const [isHighEndDevice, setIsHighEndDevice] = useState(false);
 
-  // Process logo paths only once when allLogos changes
+  // Process logo paths only once when allLogos or activeCategory changes
   const processedLogos = useMemo(() => {
     if (!allLogos || allLogos.length === 0) return [];
 
@@ -29,11 +29,11 @@ export default function LandingPage() {
       }
       // Convert old /brands/ paths to /logos/
       if (logo.startsWith("/brands/")) {
-        return logo.replace("/brands/", "/logos/");
+        return logo.replace("/brands/", activeCategory === "cars" ? "/logos/" : "/bike-logos/");
       }
       return logo;
     });
-  }, [allLogos]);
+  }, [allLogos, activeCategory]);
 
   useEffect(() => {
     setMounted(true);
@@ -55,15 +55,48 @@ export default function LandingPage() {
     checkDeviceCapability();
   }, []);
 
-  // Pass ALL logos to the carousel - don't filter or limit them
+  // Handle category change
+  const handleCategoryChange = (category: "cars" | "bikes") => {
+    console.log("Changing category to:", category);
+    setActiveCategory(category);
+  };
+
+  // Pass logos directly to LogoCarousel (don't pass processedLogos)
   return (
     <div className="w-full min-h-screen bg-white dark:bg-black text-black dark:text-white overflow-x-hidden">
       <Navbar />
       <main className="container mx-auto px-4 max-w-[1440px]">
         <Hero />
-        {/* Pass processed logos directly to LogoCarousel */}
+
+        {/* Category switching tabs */}
+        <div className="flex justify-center mt-8 mb-2">
+          <div className="bg-gray-100 dark:bg-gray-800 rounded-full p-1">
+            <button
+              className={`px-6 py-2 rounded-full transition-all ${
+                activeCategory === "cars"
+                  ? "bg-blue-500 text-white"
+                  : "hover:bg-gray-200 dark:hover:bg-gray-700"
+              }`}
+              onClick={() => handleCategoryChange("cars")}
+            >
+              Cars
+            </button>
+            <button
+              className={`px-6 py-2 rounded-full transition-all ${
+                activeCategory === "bikes"
+                  ? "bg-blue-500 text-white"
+                  : "hover:bg-gray-200 dark:hover:bg-gray-700"
+              }`}
+              onClick={() => handleCategoryChange("bikes")}
+            >
+              Bikes
+            </button>
+          </div>
+        </div>
+
+        {/* Pass null for logos to force LogoCarousel to use the store directly */}
         <LogoCarousel
-          logos={processedLogos.length > 0 ? processedLogos : allLogos}
+          logos={null}
           showTitle={true}
         />
 
