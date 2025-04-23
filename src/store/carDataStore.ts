@@ -147,10 +147,11 @@ export const useCarDataStore = create<CarDataState>()(
 
       filterCars: (filters) => {
         const { cars } = get();
-
+        
         return cars.filter((car) => {
-          // Brand filter
+          // Brand filter - Add logging for debugging
           if (filters.brand && car.basicInfo.brand !== filters.brand) {
+            console.debug(`Filtering out: ${car.basicInfo.brand} != ${filters.brand}`);
             return false;
           }
 

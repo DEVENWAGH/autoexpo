@@ -162,9 +162,17 @@ export default function Hero() {
     const params = new URLSearchParams();
 
     if (selectedFilter === "brands") {
-      if (selectedBrand) params.append("brand", selectedBrand);
-      if (selectedModel) params.append("model", selectedModel);
+      // Only add brand parameter if a brand is selected
+      if (selectedBrand) {
+        params.append("brand", selectedBrand);
+        
+        // Only add model parameter if both brand and model are selected
+        if (selectedModel) {
+          params.append("model", selectedModel);
+        }
+      }
     } else {
+      // Budget filter case
       if (selectedBudget) params.append("budget", selectedBudget);
       if (selectedVehicleType) params.append("type", selectedVehicleType);
     }

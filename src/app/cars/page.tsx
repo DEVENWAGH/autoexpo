@@ -77,12 +77,12 @@ function CarsPageContent() {
     filterCars,
   } = useCarDataStore();
 
-  // Initialize filter state with no filters applied by default
+  // Initialize filter state with URL parameters - make sure to use initialBrand here
   const [filters, setFilters] = useState({
-    brand: "",
-    model: "",
-    type: "",
-    budget: "",
+    brand: initialBrand || "",
+    model: initialModel,
+    type: initialType,
+    budget: initialBudget,
     fuelType: "",
     minPrice: 0,
     maxPrice: 10000000,
@@ -135,15 +135,11 @@ function CarsPageContent() {
 
   // Apply filters when they change
   useEffect(() => {
-    if (
-      !filters.brand &&
-      !filters.model &&
-      !filters.type &&
-      !filters.budget &&
-      !filters.fuelType
-    ) {
+    // If no filters are applied, show all cars
+    if (!filters.brand && !filters.model && !filters.type && !filters.budget && !filters.fuelType) {
       setFilteredCars(cars);
     } else {
+      // Apply filters based on what's selected
       const filtered = filterCars(filters);
       setFilteredCars(filtered);
     }

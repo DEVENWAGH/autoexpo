@@ -8,6 +8,16 @@ const nextConfig: NextConfig = {
         hostname: 'ik.imagekit.io',
         pathname: '/waghDev/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'ml.globenewswire.com',
+        pathname: '/Resource/Download/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'i.ytimg.com',
+        pathname: '/vi/**',
+      },
     ],
   },
   experimental: {
