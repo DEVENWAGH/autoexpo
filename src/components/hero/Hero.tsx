@@ -215,7 +215,12 @@ export default function Hero() {
           <Tabs
             defaultValue="cars"
             className="h-auto mx-auto"
-            onValueChange={handleTabChange}
+            onValueChange={(value) => {
+              // Only allow changing tab to "cars"
+              if (value === "cars") {
+                handleTabChange(value);
+              }
+            }}
           >
             <TabsList className="grid h-auto grid-cols-2 bg-[#000000] text-white [&>*[data-state=active]]:bg-gradient-to-r [&>*[data-state=active]]:from-[#7129a1] [&>*[data-state=active]]:to-[#9747FF] [&>*]:text-white">
               <TabsTrigger
@@ -226,162 +231,173 @@ export default function Hero() {
               </TabsTrigger>
               <TabsTrigger
                 value="bikes"
-                className={`h-16 text-lg ${Monument_Extended.className}`}
+                className={`h-16 text-lg ${Monument_Extended.className} relative`}
+                disabled
               >
                 Bikes
+                <span className="absolute -bottom-1 left-0 right-0 text-xs text-yellow-300">
+                  Coming Soon
+                </span>
               </TabsTrigger>
             </TabsList>
           </Tabs>
-          {/* Filter Toggles */}
-          <div className="my-8 flex justify-center gap-4">
+
+          {/* Always show car filters since bikes tab is disabled */}
+          <>
+            {/* Filter Toggles */}
+            <div className="my-8 flex justify-center gap-4">
+              <button
+                onClick={() => setSelectedFilter("brands")}
+                className={cn(
+                  "rounded-l-full rounded-r-none px-8 py-2 text-lg text-white transition-all duration-300",
+                  selectedFilter === "brands"
+                    ? "bg-gradient-to-r from-[#7C3AED] to-[#9747FF] shadow-lg"
+                    : "bg-[#000000] hover:bg-[#2a2438]"
+                )}
+              >
+                By Brands
+              </button>
+              <button
+                onClick={() => setSelectedFilter("budget")}
+                className={cn(
+                  "rounded-r-full rounded-l-none px-8 py-2 text-lg text-white transition-all duration-300",
+                  selectedFilter === "budget"
+                    ? "bg-gradient-to-r from-[#7C3AED] to-[#9747FF] shadow-lg"
+                    : "bg-[#000000] hover:bg-[#2a2438]"
+                )}
+              >
+                By Budget
+              </button>
+            </div>
+
+            {/* Search Button */}
             <button
-              onClick={() => setSelectedFilter("brands")}
-              className={cn(
-                "rounded-l-full rounded-r-none px-8 py-2 text-lg text-white transition-all duration-300",
-                selectedFilter === "brands"
-                  ? "bg-gradient-to-r from-[#7C3AED] to-[#9747FF] shadow-lg"
-                  : "bg-[#000000] hover:bg-[#2a2438]"
-              )}
+              onClick={handleSearch}
+              className={`mb-8 w-full rounded-full bg-gradient-to-r from-[#7129a1] to-[#9747FF] py-4 text-lg text-white shadow-lg transition-all hover:shadow-xl active:scale-95 ${Monument_Extended.className}`}
             >
-              By Brands
+              Search
             </button>
-            <button
-              onClick={() => setSelectedFilter("budget")}
-              className={cn(
-                "rounded-r-full rounded-l-none px-8 py-2 text-lg text-white transition-all duration-300",
-                selectedFilter === "budget"
-                  ? "bg-gradient-to-r from-[#7C3AED] to-[#9747FF] shadow-lg"
-                  : "bg-[#000000] hover:bg-[#2a2438]"
-              )}
-            >
-              By Budget
-            </button>
-          </div>
 
-          {/* Search Button */}
-          <button
-            onClick={handleSearch}
-            className={`mb-8 w-full rounded-full bg-gradient-to-r from-[#7129a1] to-[#9747FF] py-4 text-lg text-white shadow-lg transition-all hover:shadow-xl active:scale-95 ${Monument_Extended.className}`}
-          >
-            Search
-          </button>
-
-          {selectedFilter === "budget" ? (
-            <>
-              {/* Budget Select */}
-              <div className="space-y-2 rounded-t-lg bg-[#E5D8F6] p-4">
-                <Select
-                  value={selectedBudget}
-                  onValueChange={setSelectedBudget}
-                >
-                  <SelectTrigger className="w-full text-xl bg-[#E5D8F6] text-black border-[#7129a1]">
-                    <SelectValue placeholder="Set Budget" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-[#E5D8F6] border-[#7129a1] text-black">
-                    {(activeTab === "cars"
-                      ? carBudgetRanges
-                      : bikeBudgetRanges
-                    ).map((budget) => (
-                      <SelectItem
-                        key={budget}
-                        value={budget}
-                        className="hover:bg-[#7129a1] focus:bg-[#7129a1]"
-                      >
-                        {budget}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Vehicle Types Select */}
-              <div className="space-y-2 rounded-b-lg bg-[#E5D8F6] p-4">
-                <Select
-                  value={selectedVehicleType}
-                  onValueChange={setSelectedVehicleType}
-                >
-                  <SelectTrigger className="w-full text-xl bg-[#E5D8F6] text-black border-[#7129a1]">
-                    <SelectValue
-                      placeholder={`Select ${
-                        activeTab === "cars" ? "Car" : "Bike"
-                      } Type`}
-                    />
-                  </SelectTrigger>
-                  <SelectContent className="bg-[#E5D8F6] border-[#7129a1] text-black">
-                    {(activeTab === "cars" ? carTypes : bikeTypes).map(
-                      (type) => (
+            {selectedFilter === "budget" ? (
+              <>
+                {/* Budget Select */}
+                <div className="space-y-2 rounded-t-lg bg-[#E5D8F6] p-4">
+                  <Select
+                    value={selectedBudget}
+                    onValueChange={setSelectedBudget}
+                  >
+                    <SelectTrigger className="w-full text-xl bg-[#E5D8F6] text-black border-[#7129a1]">
+                      <SelectValue placeholder="Set Budget" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-[#E5D8F6] border-[#7129a1] text-black">
+                      {(activeTab === "cars"
+                        ? carBudgetRanges
+                        : bikeBudgetRanges
+                      ).map((budget) => (
                         <SelectItem
-                          key={type}
-                          value={type}
+                          key={budget}
+                          value={budget}
                           className="hover:bg-[#7129a1] focus:bg-[#7129a1]"
                         >
-                          {type}
+                          {budget}
                         </SelectItem>
-                      )
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
-            </>
-          ) : (
-            <>
-              {/* Brand Select */}
-              <div className="space-y-2 rounded-t-lg bg-[#E5D8F6] p-4">
-                <Select value={selectedBrand} onValueChange={setSelectedBrand}>
-                  <SelectTrigger className="w-full text-xl bg-[#E5D8F6] text-black border-[#7129a1]">
-                    <SelectValue
-                      placeholder={
-                        isLoading ? "Loading brands..." : "Select Brand"
-                      }
-                    />
-                  </SelectTrigger>
-                  <SelectContent className="bg-[#E5D8F6] text-black max-h-[300px] overflow-y-auto">
-                    {brands.map((brand) => (
-                      <SelectItem
-                        key={brand.name}
-                        value={brand.name}
-                        className="hover:bg-[#7129a1] focus:bg-[#7129a1]"
-                      >
-                        {brand.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-              {/* Model Select */}
-              <div className="space-y-2 rounded-b-lg bg-[#E5D8F6] p-4">
-                <Select
-                  value={selectedModel}
-                  onValueChange={setSelectedModel}
-                  disabled={!selectedBrand || availableModels.length === 0}
-                >
-                  <SelectTrigger className="w-full text-xl bg-[#E5D8F6] text-black border-[#7129a1]">
-                    <SelectValue
-                      placeholder={
-                        !selectedBrand
-                          ? "Select brand first"
-                          : availableModels.length === 0
-                          ? "Loading models..."
-                          : "Select Model"
-                      }
-                    />
-                  </SelectTrigger>
-                  <SelectContent className="bg-[#E5D8F6] text-black max-h-[300px] overflow-y-auto">
-                    {availableModels.map((model) => (
-                      <SelectItem
-                        key={model}
-                        value={model}
-                        className="hover:bg-[#7129a1] focus:bg-[#7129a1]"
-                      >
-                        {model}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </>
-          )}
+                {/* Vehicle Types Select */}
+                <div className="space-y-2 rounded-b-lg bg-[#E5D8F6] p-4">
+                  <Select
+                    value={selectedVehicleType}
+                    onValueChange={setSelectedVehicleType}
+                  >
+                    <SelectTrigger className="w-full text-xl bg-[#E5D8F6] text-black border-[#7129a1]">
+                      <SelectValue
+                        placeholder={`Select ${
+                          activeTab === "cars" ? "Car" : "Bike"
+                        } Type`}
+                      />
+                    </SelectTrigger>
+                    <SelectContent className="bg-[#E5D8F6] border-[#7129a1] text-black">
+                      {(activeTab === "cars" ? carTypes : bikeTypes).map(
+                        (type) => (
+                          <SelectItem
+                            key={type}
+                            value={type}
+                            className="hover:bg-[#7129a1] focus:bg-[#7129a1]"
+                          >
+                            {type}
+                          </SelectItem>
+                        )
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </>
+            ) : (
+              <>
+                {/* Brand Select */}
+                <div className="space-y-2 rounded-t-lg bg-[#E5D8F6] p-4">
+                  <Select
+                    value={selectedBrand}
+                    onValueChange={setSelectedBrand}
+                  >
+                    <SelectTrigger className="w-full text-xl bg-[#E5D8F6] text-black border-[#7129a1]">
+                      <SelectValue
+                        placeholder={
+                          isLoading ? "Loading brands..." : "Select Brand"
+                        }
+                      />
+                    </SelectTrigger>
+                    <SelectContent className="bg-[#E5D8F6] text-black max-h-[300px] overflow-y-auto">
+                      {brands.map((brand) => (
+                        <SelectItem
+                          key={brand.name}
+                          value={brand.name}
+                          className="hover:bg-[#7129a1] focus:bg-[#7129a1]"
+                        >
+                          {brand.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Model Select */}
+                <div className="space-y-2 rounded-b-lg bg-[#E5D8F6] p-4">
+                  <Select
+                    value={selectedModel}
+                    onValueChange={setSelectedModel}
+                    disabled={!selectedBrand || availableModels.length === 0}
+                  >
+                    <SelectTrigger className="w-full text-xl bg-[#E5D8F6] text-black border-[#7129a1]">
+                      <SelectValue
+                        placeholder={
+                          !selectedBrand
+                            ? "Select brand first"
+                            : availableModels.length === 0
+                              ? "Loading models..."
+                              : "Select Model"
+                        }
+                      />
+                    </SelectTrigger>
+                    <SelectContent className="bg-[#E5D8F6] text-black max-h-[300px] overflow-y-auto">
+                      {availableModels.map((model) => (
+                        <SelectItem
+                          key={model}
+                          value={model}
+                          className="hover:bg-[#7129a1] focus:bg-[#7129a1]"
+                        >
+                          {model}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </>
+            )}
+          </>
         </div>
       </div>
       <div className="absolute left-8 top-[621px] w-[616px]">

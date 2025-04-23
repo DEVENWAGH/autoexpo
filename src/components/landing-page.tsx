@@ -29,7 +29,10 @@ export default function LandingPage() {
       }
       // Convert old /brands/ paths to /logos/
       if (logo.startsWith("/brands/")) {
-        return logo.replace("/brands/", activeCategory === "cars" ? "/logos/" : "/bike-logos/");
+        return logo.replace(
+          "/brands/",
+          activeCategory === "cars" ? "/logos/" : "/bike-logos/"
+        );
       }
       return logo;
     });
@@ -68,37 +71,8 @@ export default function LandingPage() {
       <main className="container mx-auto px-4 max-w-[1440px]">
         <Hero />
 
-        {/* Category switching tabs */}
-        <div className="flex justify-center mt-8 mb-2">
-          <div className="bg-gray-100 dark:bg-gray-800 rounded-full p-1">
-            <button
-              className={`px-6 py-2 rounded-full transition-all ${
-                activeCategory === "cars"
-                  ? "bg-blue-500 text-white"
-                  : "hover:bg-gray-200 dark:hover:bg-gray-700"
-              }`}
-              onClick={() => handleCategoryChange("cars")}
-            >
-              Cars
-            </button>
-            <button
-              className={`px-6 py-2 rounded-full transition-all ${
-                activeCategory === "bikes"
-                  ? "bg-blue-500 text-white"
-                  : "hover:bg-gray-200 dark:hover:bg-gray-700"
-              }`}
-              onClick={() => handleCategoryChange("bikes")}
-            >
-              Bikes
-            </button>
-          </div>
-        </div>
-
         {/* Pass null for logos to force LogoCarousel to use the store directly */}
-        <LogoCarousel
-          logos={null}
-          showTitle={true}
-        />
+        <LogoCarousel logos={null} showTitle={true} />
 
         {/* Only show 3D version if enabled and user has opted in */}
         {mounted && use3D && isHighEndDevice && (

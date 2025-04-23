@@ -474,7 +474,7 @@ export default function LogoCarousel({ logos, showTitle = true }: Props) {
         </button>
 
         {/* Visual indicators */}
-        <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-1.5 pb-2">
+        <div className="absolute top-75 left-0 right-0 flex justify-center gap-1.5 pb-2">
           {processedLogos.map((_, idx) => (
             <button
               key={idx}
