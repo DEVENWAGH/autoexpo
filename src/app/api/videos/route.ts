@@ -5,6 +5,18 @@ const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY || "";
 const YOUTUBE_API_URL = "https://www.googleapis.com/youtube/v3/search";
 const YOUTUBE_VIDEO_DETAILS_URL = "https://www.googleapis.com/youtube/v3/videos";
 
+// Helper to get YouTube thumbnail from videoId with quality options
+function getYoutubeThumbnailUrl(videoId: string, quality = "hqdefault") {
+  // Ensure we have a valid videoId before constructing URL
+  if (!videoId || videoId.length !== 11) {
+    return "/images/placeholder-video.jpg";
+  }
+  
+  // Valid quality options: default, mqdefault, hqdefault, sddefault, maxresdefault
+  // mqdefault (medium quality) is often more reliable than hqdefault
+  return `https://i.ytimg.com/vi/${videoId}/${quality}.jpg`;
+}
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -24,11 +36,12 @@ export async function GET(request: NextRequest) {
     }
     
     if (YOUTUBE_API_KEY) {
-      // Fetch videos from YouTube
+      // Fetch videos from YouTube - Filter out short videos and get only medium or long duration videos
+      // Also adding videoCategoryId=2 for Autos & Vehicles category for more relevant results
       const response = await fetch(
         `${YOUTUBE_API_URL}?part=snippet&maxResults=12&q=${encodeURIComponent(
           searchQuery
-        )}&type=video&regionCode=IN&relevanceLanguage=en&key=${YOUTUBE_API_KEY}`
+        )}&type=video&videoDuration=medium&videoCategoryId=2&regionCode=IN&relevanceLanguage=en&key=${YOUTUBE_API_KEY}`
       );
 
       if (!response.ok) {
@@ -63,11 +76,15 @@ export async function GET(request: NextRequest) {
           ? formatViewCount(parseInt(details.statistics.viewCount)) 
           : undefined;
           
+        // Get the highest quality thumbnail available
+        // Use mqdefault as it's more reliable across different videos
+        const thumbnailUrl = getYoutubeThumbnailUrl(videoId, "mqdefault");
+        
         return {
           id: videoId,
           title: item.snippet.title,
           description: item.snippet.description,
-          thumbnailUrl: item.snippet.thumbnails.high.url,
+          thumbnailUrl: thumbnailUrl,
           videoUrl: `https://www.youtube.com/watch?v=${videoId}`,
           channelTitle: item.snippet.channelTitle,
           publishedAt: item.snippet.publishedAt,
@@ -114,63 +131,58 @@ function formatViewCount(views: number): string {
 
 // Mock video data for development or when API fails
 function getMockVideoData(vehicleType = "all", query = "") {
+  // Only store id and other info, not thumbnailUrl
   let videos = [
     {
-      id: "video-1",
+      id: "dQw4w9WgXcQ",
       title: "Tata Harrier 2023 Review - Most Advanced Tata SUV Ever!",
       description: "Check out our detailed review of the all-new Tata Harrier 2023 with ADAS features",
-      thumbnailUrl: "/images/videos/tata-harrier.jpg",
-      videoUrl: "https://www.youtube.com/watch?v=example1",
+      videoUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
       channelTitle: "Indian Auto Reviews",
       publishedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
       viewCount: "1.2M",
     },
     {
-      id: "video-2",
+      id: "kJQP7kiw5Fk",
       title: "Royal Enfield Himalayan 450 - First Ride Review",
       description: "We test the new Royal Enfield Himalayan 450 on various terrains to see how it performs",
-      thumbnailUrl: "/images/videos/re-himalayan.jpg",
-      videoUrl: "https://www.youtube.com/watch?v=example2",
+      videoUrl: "https://www.youtube.com/watch?v=kJQP7kiw5Fk",
       channelTitle: "BikeWorld India",
       publishedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
       viewCount: "856K",
     },
     {
-      id: "video-3",
+      id: "9bZkp7q19f0",
       title: "Mahindra XUV700 vs Scorpio N - Which SUV to Buy?",
       description: "Detailed comparison review between Mahindra's flagship SUVs - XUV700 and Scorpio N",
-      thumbnailUrl: "/images/videos/mahindra-comparison.jpg",
-      videoUrl: "https://www.youtube.com/watch?v=example3",
+      videoUrl: "https://www.youtube.com/watch?v=9bZkp7q19f0",
       channelTitle: "Car Analysis",
       publishedAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
       viewCount: "2.1M",
     },
     {
-      id: "video-4",
+      id: "fJ9rUzIMcZQ",
       title: "Honda Activa 6G vs TVS Jupiter - Best 110cc Scooter?",
       description: "Comprehensive comparison between the two most popular 110cc scooters in India",
-      thumbnailUrl: "/images/videos/activa-jupiter.jpg",
-      videoUrl: "https://www.youtube.com/watch?v=example4",
+      videoUrl: "https://www.youtube.com/watch?v=fJ9rUzIMcZQ",
       channelTitle: "Scooter Guide",
       publishedAt: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000).toISOString(),
       viewCount: "754K",
     },
     {
-      id: "video-5",
+      id: "YR12Z8f1Dh8",
       title: "Ola S1 Pro Electric Scooter - Long Term Review After 10,000km",
       description: "My experience with the Ola S1 Pro after riding it for 10,000 kilometers",
-      thumbnailUrl: "/images/videos/ola-s1.jpg",
-      videoUrl: "https://www.youtube.com/watch?v=example5",
+      videoUrl: "https://www.youtube.com/watch?v=YR12Z8f1Dh8",
       channelTitle: "Electric Vehicle Guide",
       publishedAt: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString(),
       viewCount: "1.5M",
     },
     {
-      id: "video-6",
+      id: "mWRsgZuwf_8",
       title: "Maruti Suzuki Grand Vitara Hybrid - Detailed Mileage Test",
       description: "Testing the real-world fuel efficiency of the Grand Vitara Strong Hybrid in city and highway",
-      thumbnailUrl: "/images/videos/grand-vitara.jpg",
-      videoUrl: "https://www.youtube.com/watch?v=example6",
+      videoUrl: "https://www.youtube.com/watch?v=mWRsgZuwf_8",
       channelTitle: "Mileage Master",
       publishedAt: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString(),
       viewCount: "980K",
@@ -202,11 +214,20 @@ function getMockVideoData(vehicleType = "all", query = "") {
   // Filter based on query
   if (query) {
     const lowerQuery = query.toLowerCase();
-    videos = videos.filter(v => 
-      v.title.toLowerCase().includes(lowerQuery) || 
+    videos = videos.filter(v =>
+      v.title.toLowerCase().includes(lowerQuery) ||
       v.description.toLowerCase().includes(lowerQuery) ||
       v.channelTitle.toLowerCase().includes(lowerQuery));
   }
 
-  return videos;
+  // Ensure all videos have thumbnails - never return a video without a thumbnail
+  return videos.map(v => {
+    // Always generate a proper thumbnail URL for the video ID
+    const thumbnailUrl = v.id ? getYoutubeThumbnailUrl(v.id, "mqdefault") : "/images/placeholder-video.jpg";
+    
+    return {
+      ...v,
+      thumbnailUrl,
+    };
+  });
 }

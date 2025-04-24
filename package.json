@@ -47,6 +47,7 @@
     "react-hook-form": "^7.55.0",
     "react-hot-toast": "^2.5.2",
     "react-lottie": "^1.2.10",
+    "react-player": "^2.14.1",
     "recharts": "^2.15.2",
     "resend": "^4.2.0",
     "shadcn-ui": "^0.9.5",
